@@ -1,10 +1,26 @@
 // 교사 기기에서만 실행하는 규칙 엔진. 학생은 행동 요청만 보냅니다.
 export const NAMES = ['총류','철학','종교','사회과학','자연과학','기술과학','예술','언어','문학','역사'];
+export const CLASS_ICONS = ['📚','🧠','🕊️','🏫','⚛️','🩺','🎨','💬','📖','🏛️'];
+export const KDC_SUBJECTS = [
+  [[0,'총류'],[10,'도서학·서지학'],[20,'문헌정보학'],[30,'백과사전'],[70,'신문·언론'],[80,'총서']],
+  [[0,'철학'],[10,'형이상학'],[50,'동양철학'],[60,'서양철학'],[70,'논리학'],[90,'윤리학']],
+  [[0,'종교'],[10,'비교종교'],[20,'불교'],[30,'기독교'],[40,'도교']],
+  [[0,'사회과학'],[10,'통계자료'],[20,'경제학'],[40,'정치학'],[50,'행정학'],[70,'교육학']],
+  [[0,'자연과학'],[10,'수학'],[20,'물리학'],[30,'화학'],[70,'생명과학'],[80,'식물학']],
+  [[0,'기술과학'],[10,'의학'],[20,'농업'],[30,'공학'],[40,'건축공학'],[60,'전기·전자공학']],
+  [[0,'예술'],[10,'건축술'],[30,'공예'],[50,'회화'],[70,'음악']],
+  [[0,'언어'],[10,'한국어'],[20,'중국어'],[30,'일본어'],[40,'영어']],
+  [[0,'문학'],[10,'한국문학'],[20,'중국문학'],[30,'일본문학'],[40,'영미문학'],[50,'독일문학']],
+  [[0,'역사'],[10,'아시아'],[20,'유럽'],[30,'아프리카'],[80,'지리']],
+];
+export const subjectOf = code => {
+  const major=Math.floor(Number(code)/100), offset=Number(code)%100;
+  return KDC_SUBJECTS[major]?.find(([value])=>value===offset)?.[1]||NAMES[major]||'KDC';
+};
 export const codeOf = c => c?.type === 'normal' ? String(c.code).padStart(3,'0') : (c?.code ?? '—');
 export function buildDeck(random = Math.random) {
-  const counts = [6,6,5,6,6,6,5,5,6,5];
   const cards = [];
-  counts.forEach((count,h) => { for(let t=0;t<count;t++) cards.push({id:`n${h}${t}`,type:'normal',code:h*100+t*10,label:NAMES[h]}); });
+  KDC_SUBJECTS.forEach((group,h) => group.forEach(([offset,subject],t) => cards.push({id:`n${h}${t}`,type:'normal',code:h*100+offset,label:NAMES[h],subject,mainCode:h*100,icon:CLASS_ICONS[h]})));
   [['plus',6,2],['plus',4,3],['reverse',4,0],['skip',4,0],['joker',6,0]].forEach(([type,count,value],group) => {
     for(let i=0;i<count;i++) cards.push({id:`s${group}${i}`,type,value,code:type==='plus'?`+${value}`:type==='reverse'?'↺':type==='skip'?'⊘':'★',label:type==='plus'?`플러스 ${value}`:type==='reverse'?'유턴':type==='skip'?'스킵':'조커'});
   });
@@ -17,7 +33,9 @@ export function newRoom(mode='individual',minutes=30,kind='onecard',maxPlayers=n
 }
 export function normalize(g) {
   for(const key of ['players','deck','discard','logs']) g[key] ||= [];
-  g.players.forEach(p=>p.hand ||= []);
+  const enrich=card=>{if(card?.type==='normal'){const major=Math.floor(Number(card.code)/100);card.label||=NAMES[major]||'KDC';card.subject||=subjectOf(card.code);card.mainCode??=major*100;card.icon||=CLASS_ICONS[major]||CLASS_ICONS[0];}};
+  g.deck.forEach(enrich);g.discard.forEach(enrich);
+  g.players.forEach(p=>{p.hand ||= [];p.hand.forEach(enrich);});
   g.maxPlayers ||= g.kind==='quiz'?20:g.mode==='team'?10:5;
   g.captainUid ||= g.players[0]?.uid||'';
   g.processed ||= {};
@@ -69,6 +87,28 @@ export function apply(g,uid,a,now=Date.now()) {
     g.players.push({uid,name,team:a.team,hand:[],score:0,correct:0});
     if(!g.captainUid)g.captainUid=uid;
     log(g,`${name} 입장${g.captainUid===uid?' · 학생 방장':''}`,now);return;
+  }
+  if(a.type==='leave') {
+    const index=g.players.findIndex(q=>q.uid===uid);
+    if(index<0)return;
+    const [leaving]=g.players.splice(index,1);
+    if(g.answers)delete g.answers[uid];
+    if(g.captainUid===uid)g.captainUid=g.players[0]?.uid||'';
+    if(g.kind!=='quiz'&&g.phase==='match') {
+      if(index===g.turn)g.onePending=null;
+      if(g.mode==='team') {
+        const aCount=g.players.filter(q=>q.team==='A').length,bCount=g.players.filter(q=>q.team==='B').length;
+        if(!aCount&&!bCount){g.phase='finished';g.winner='참가자 없음';}
+        else if(!aCount||!bCount){g.phase='finished';g.winner=aCount?'A팀 승리':'B팀 승리';}
+      } else if(g.players.length===1) {g.phase='finished';g.winner=`${g.players[0].name} 승리`;}
+      else if(!g.players.length) {g.phase='finished';g.winner='참가자 없음';}
+      if(g.phase==='match') {
+        if(index<g.turn)g.turn--;
+        else if(index===g.turn)g.turn=g.direction===1?index%g.players.length:(index-1+g.players.length)%g.players.length;
+        g.turn=(g.turn+g.players.length)%g.players.length;g.turnNo++;
+      }
+    }
+    log(g,`${leaving.name} 방 나감${g.captainUid?` · 새 방장 ${g.players.find(q=>q.uid===g.captainUid)?.name||''}`:''}`,now);return;
   }
   const p=g.players.find(p=>p.uid===uid);if(!p) throw Error('먼저 방에 입장하세요.');
   if(a.type==='team') {
