@@ -304,12 +304,7 @@ const oneCardState = {
   teamSplit: "manual",
   roomCode: "ONE-7F3A",
   phase: "lobby",
-  players: [
-    { id: "oc-1", name: "민서", team: "A", hand: [] },
-    { id: "oc-2", name: "도윤", team: "B", hand: [] },
-    { id: "oc-3", name: "서윤", team: "A", hand: [] },
-    { id: "oc-4", name: "지호", team: "B", hand: [] },
-  ],
+  players: [],
   activePlayerIndex: 0,
   turnIndex: 0,
   direction: 1,
@@ -374,13 +369,23 @@ function ocRenderLobbyPlayers() {
   $("#ocLobbyLimit").textContent = oneCardState.maxPlayers;
   $("#ocRoomCode").textContent = oneCardState.roomCode;
   $("#ocLobbyHint").textContent = oneCardState.mode === "team" ? "단체전은 4명 이상, A팀과 B팀으로 시작해요." : "개인전은 2명 이상이면 시작할 수 있어요.";
-  $("#ocLobbyPlayers").innerHTML = oneCardState.players.map((player, index) => `<div class="onecard-lobby-player" data-team="${player.team}"><span>${String(index + 1).padStart(2, "0")}</span><strong>${player.name}</strong>${oneCardState.mode === "team" ? `<button class="team-toggle" data-oc-team-index="${index}" type="button" aria-label="${player.name} 팀 변경">${player.team}팀 <span>↔</span></button>` : "<small>개인</small>"}</div>`).join("");
+  $("#ocLobbyPlayers").innerHTML = oneCardState.players.map((player, index) => `<div class="onecard-lobby-player" data-team="${player.team}"><span>${String(index + 1).padStart(2, "0")}</span><strong>${player.name}</strong>${oneCardState.mode === "team" ? `<button class="team-toggle" data-oc-team-index="${index}" type="button" aria-label="${player.name} 팀 변경">${player.team}팀 <span>↔</span></button>` : "<small>개인</small>"}<button class="player-remove-button" data-oc-remove-index="${index}" type="button" aria-label="${player.name} 명단에서 삭제">삭제</button></div>`).join("");
   $$("[data-oc-team-index]").forEach((button) => button.addEventListener("click", () => {
     const index = Number(button.dataset.ocTeamIndex);
     const player = oneCardState.players[index];
     if (!player) return;
     player.team = player.team === "A" ? "B" : "A";
     ocAddLog(`<b>${player.name}</b>님이 ${player.team}팀으로 이동했습니다.`);
+    ocRenderLobbyPlayers();
+  }));
+  $$('[data-oc-remove-index]').forEach((button) => button.addEventListener("click", () => {
+    const index = Number(button.dataset.ocRemoveIndex);
+    const [removed] = oneCardState.players.splice(index, 1);
+    if (!removed) return;
+    const lastIndex = Math.max(0, oneCardState.players.length - 1);
+    oneCardState.activePlayerIndex = Math.min(oneCardState.activePlayerIndex > index ? oneCardState.activePlayerIndex - 1 : oneCardState.activePlayerIndex, lastIndex);
+    oneCardState.turnIndex = Math.min(oneCardState.turnIndex > index ? oneCardState.turnIndex - 1 : oneCardState.turnIndex, lastIndex);
+    ocAddLog(`<b>${removed.name}</b>님을 대기 명단에서 삭제했습니다.`);
     ocRenderLobbyPlayers();
   }));
   $("#ocMaxPlayers").value = String(oneCardState.maxPlayers);

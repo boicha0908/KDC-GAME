@@ -13,7 +13,7 @@
           "createdAt": { ".validate": "newData.isNumber()" },
           "mode": { ".validate": "newData.val() == 'individual' || newData.val() == 'team'" },
           "kind": { ".validate": "newData.val() == 'onecard' || newData.val() == 'quiz'" },
-          "redirect": { ".validate": "newData.isString() && newData.val().length >= 4 && newData.val().length <= 12" },
+          "redirect": { ".validate": "newData.isString() && newData.val().length >= 3 && newData.val().length <= 20" },
           "$other": { ".validate": false }
         },
         "public": {
