@@ -211,12 +211,12 @@
                     <span class="panel-index">01</span>
                   </div>
                   <div class="onecard-mode-grid">
-                    <button class="onecard-mode-card selected" data-onecard-mode="individual" type="button"><span class="mode-symbol">◎</span><span><strong>개인전</strong><small>2~5명 · 각자 가장 먼저 0장 만들기</small></span><b>✓</b></button>
+                    <button class="onecard-mode-card selected" data-onecard-mode="individual" type="button"><span class="mode-symbol">◎</span><span><strong>개인전</strong><small>2~5명 · 1:1 대결부터 가능</small></span><b>✓</b></button>
                     <button class="onecard-mode-card" data-onecard-mode="team" type="button"><span class="mode-symbol coral">⚡</span><span><strong>단체전</strong><small>4~10명 · A팀과 B팀을 직접 선택</small></span><b>✓</b></button>
                   </div>
                   <div class="onecard-form-row">
                     <label for="ocMaxPlayers">최대 인원</label>
-                    <select id="ocMaxPlayers"><option value="5" selected>5명 (개인전)</option><option value="10">10명 (단체전)</option></select>
+                    <select id="ocMaxPlayers"><option value="2">2명 (1:1)</option><option value="3">3명</option><option value="4">4명</option><option value="5" selected>5명</option></select>
                     <label for="ocTeamSplit">팀 배정</label>
                     <select id="ocTeamSplit"><option value="manual" selected>직접 선택</option></select>
                   </div>
@@ -226,7 +226,7 @@
                   <div class="panel-heading compact"><div><span class="panel-kicker">ROOM CODE</span><h2>친구를 방에 초대하세요</h2></div><div class="onecard-room-code" id="ocRoomCode">ONE-7F3A</div></div>
                   <div class="onecard-room-actions"><button class="secondary-button" id="ocCopyRoom" type="button">방 코드 복사</button><span>학생 화면에서는 교사가 공유한 코드로 입장합니다.</span></div>
                   <div class="onecard-join-row"><input id="ocJoinName" type="text" maxlength="10" placeholder="플레이어 이름" aria-label="원카드 플레이어 이름" /><select id="ocJoinTeam" aria-label="팀 선택" disabled><option value="A">A팀</option><option value="B">B팀</option></select><button class="primary-button" id="ocJoinButton" type="button">입장하기 <span>→</span></button></div>
-                  <div class="onecard-lobby-meta"><span>참가자 <b id="ocLobbyCount">0</b>/<b id="ocLobbyLimit">5</b></span><span id="ocLobbyHint">개인전은 2명 이상이면 시작할 수 있어요.</span></div>
+                  <div class="onecard-lobby-meta"><span>참가자 <b id="ocLobbyCount">0</b>/<b id="ocLobbyLimit">2</b></span><span id="ocLobbyHint">개인전은 1:1부터 가능하며, 첫 입장 학생이 방장이 됩니다.</span></div>
                   <div class="onecard-lobby-list" id="ocLobbyPlayers" aria-live="polite"></div>
                   <button class="primary-button full onecard-start-button" id="ocStartButton" type="button">원카드 경기 시작 <span>→</span></button>
                 </article>
@@ -280,7 +280,7 @@
       <button class="modal-close" id="closeHelp" type="button" aria-label="닫기">×</button>
       <span class="panel-kicker">QUICK GUIDE</span>
       <h2 id="helpTitle">수업 진행 3단계</h2>
-      <ol class="guide-list"><li><span>01</span><div><strong>방 코드 공유</strong><p>교사 화면의 코드를 전자칠판에 띄우고 학생에게 알려 주세요.</p></div></li><li><span>02</span><div><strong>게임 방식 선택</strong><p>개인전 또는 단체전, 카드 매칭 또는 책 표지 퀴즈를 선택합니다.</p></div></li><li><span>03</span><div><strong>경기 시작</strong><p>학생이 모두 들어오면 시작 버튼을 누르고 라운드를 진행합니다.</p></div></li></ol>
+      <ol class="guide-list"><li><span>01</span><div><strong>방 코드 공유</strong><p>교사 화면의 코드를 전자칠판에 띄우고 학생에게 알려 주세요.</p></div></li><li><span>02</span><div><strong>게임 방식 선택</strong><p>개인전은 2명(1:1)부터 정원을 고를 수 있고, 단체전은 A/B팀을 직접 나눕니다.</p></div></li><li><span>03</span><div><strong>학생 방장이 시작</strong><p>첫 입장 학생이 방장이 됩니다. 원카드는 정원이 차면 방장이 시작할 수 있고, 실시간 퀴즈는 교사가 시작합니다.</p></div></li></ol>
       <button class="primary-button full" id="closeHelpButton" type="button">확인</button>
     </div>
   </div>

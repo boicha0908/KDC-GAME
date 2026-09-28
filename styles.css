@@ -360,7 +360,8 @@ input[type="range"] { width: 100%; accent-color: var(--lime); }
 .onecard-lobby-player { display: flex; align-items: center; gap: 9px; border: 1px solid rgba(184,205,235,.1); background: rgba(13,21,37,.57); padding: 9px; border-radius: 8px; }
 .onecard-lobby-player > span:first-child { display: grid; place-items: center; width: 25px; height: 25px; border-radius: 7px; color: var(--navy-950); background: var(--lime); font-weight: 900; font-size: 10px; }
 .onecard-lobby-player[data-team="B"] > span:first-child { background: var(--coral); }
-.onecard-lobby-player strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 11px; }
+.onecard-lobby-player strong { min-width:0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 11px; }
+.captain-tag { flex-shrink:0; padding:4px 7px; border:1px solid rgba(199,255,74,.3); border-radius:999px; color:var(--lime); font-size:9px; font-weight:800; white-space:nowrap; }
 .team-toggle { margin-left: auto; border: 1px solid rgba(199,255,74,.28); border-radius: 6px; background: rgba(199,255,74,.08); color: var(--lime); padding: 5px 6px; font-size: 10px; font-weight: 800; white-space: nowrap; }
 .onecard-lobby-player[data-team="B"] .team-toggle { border-color: rgba(255,115,101,.32); background: rgba(255,115,101,.1); color: var(--coral); }
 .team-toggle span { margin-left: 3px; color: var(--muted); }

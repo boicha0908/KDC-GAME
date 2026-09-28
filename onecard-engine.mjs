@@ -11,12 +11,15 @@ export function buildDeck(random = Math.random) {
   for(let i=cards.length-1;i>0;i--) {const j=Math.floor(random()*(i+1));[cards[i],cards[j]]=[cards[j],cards[i]];}
   return cards;
 }
-export function newRoom(mode='individual',minutes=30,kind='onecard') {
-  return {kind,mode,phase:'lobby',players:[],deck:[],discard:[],target:0,turn:0,direction:1,attack:0,attackLevel:0,version:0,turnNo:0,minutes,deadline:0,onePending:null,winner:'',logs:[],processed:{},answers:{},questionIndex:0,quizQuestions:[]};
+export function newRoom(mode='individual',minutes=30,kind='onecard',maxPlayers=null) {
+  const capacity=kind==='quiz'?20:maxPlayers||(mode==='team'?10:5);
+  return {kind,mode,maxPlayers:capacity,captainUid:'',phase:'lobby',players:[],deck:[],discard:[],target:0,turn:0,direction:1,attack:0,attackLevel:0,version:0,turnNo:0,minutes,deadline:0,onePending:null,winner:'',logs:[],processed:{},answers:{},questionIndex:0,quizQuestions:[]};
 }
 export function normalize(g) {
   for(const key of ['players','deck','discard','logs']) g[key] ||= [];
   g.players.forEach(p=>p.hand ||= []);
+  g.maxPlayers ||= g.kind==='quiz'?20:g.mode==='team'?10:5;
+  g.captainUid ||= g.players[0]?.uid||'';
   g.processed ||= {};
   return g;
 }
@@ -59,11 +62,13 @@ export function apply(g,uid,a,now=Date.now()) {
   if(a.type==='join') {
     const existing=g.players.find(p=>p.uid===uid);if(existing) return;
     if(g.phase!=='lobby') throw Error('이미 시작된 방입니다.');
-    if(g.players.length >= (g.kind==='quiz'?20:g.mode==='team'?10:5)) throw Error('방이 가득 찼어요.');
+    if(g.players.length >= g.maxPlayers) throw Error('방이 가득 찼어요.');
     const name=String(a.name||'').trim();if(!name||name.length>10) throw Error('별명은 1~10자로 입력하세요.');
     if(!['A','B'].includes(a.team)) throw Error('팀을 선택하세요.');
     if(g.players.filter(p=>p.team===a.team).length>=(g.kind==='quiz'?10:5) && g.mode==='team') throw Error('팀 인원이 가득 찼습니다.');
-    g.players.push({uid,name,team:a.team,hand:[],score:0,correct:0});log(g,`${name} 입장`,now);return;
+    g.players.push({uid,name,team:a.team,hand:[],score:0,correct:0});
+    if(!g.captainUid)g.captainUid=uid;
+    log(g,`${name} 입장${g.captainUid===uid?' · 학생 방장':''}`,now);return;
   }
   const p=g.players.find(p=>p.uid===uid);if(!p) throw Error('먼저 방에 입장하세요.');
   if(a.type==='team') {
@@ -107,7 +112,7 @@ export function apply(g,uid,a,now=Date.now()) {
 }
 export function start(g,deck,now=Date.now()) {
   if(g.phase!=='lobby') throw Error('대기실에서 시작하세요.');
-  if(g.players.length<2||g.players.length>(g.mode==='team'?10:5)) throw Error('참가 인원을 확인하세요.');
+  if(g.players.length<2||g.players.length>g.maxPlayers) throw Error('참가 인원을 확인하세요.');
   if(g.mode==='team') {const a=g.players.filter(p=>p.team==='A').length,b=g.players.length-a;if(a<2||b<2||a>5||b>5) throw Error('각 팀 2~5명이 필요합니다.');}
   g.deck=[...deck];g.players.forEach(p=>{p.hand=g.deck.splice(-6);});
   const first=g.deck.findIndex(c=>c.type==='normal');g.discard=[g.deck.splice(first,1)[0]];g.target=g.discard[0].code;
