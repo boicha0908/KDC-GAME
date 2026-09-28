@@ -7,16 +7,18 @@ import {newRoom,normalize,buildDeck,apply,start,startQuiz,nextQuiz,tick,publicSt
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getDatabase(app);
-let uid='',room='',role='',pub=null,hand=[],engine=null,connected=false,offset=0,working=false,claimed=false,hostReady=false;
-let mode='individual',unsub=[],pending={},timer,busy=false;
+let uid='',room='',role='',pub=null,hand=[],engine=null,connected=false,offset=0,claimed=false,hostReady=false;
+let mode='individual',unsub=[],busy=false;
+const roomWorkers=new Map(),roomCatalog=new Map();
 const tabId=crypto.randomUUID();
 const now=()=>Date.now()+offset;
 const path=s=>ref(db,`rooms/${room}/${s}`);
 const connection=$('#connectionText');
 const toast=text=>window.showToast?window.showToast(text):alert(text);
 const banner=document.createElement('article');banner.className='panel online-entry';
-banner.innerHTML=`<div><span class="panel-kicker">ONLINE ROOM</span><h2>교사 방 생성 / 학생 입장</h2><p id="onlineStatus" role="status">Firebase 연결 준비 중…</p></div><div class="online-controls"><label>게임<select id="onlineKind"><option value="onecard">KDC 원카드</option><option value="quiz">KDC 실시간 퀴즈 (최대 20명)</option></select></label><button id="onlineCreate" class="primary-button" type="button">교사: 방 만들기</button><label>학생 방 코드<input id="onlineCode" placeholder="예: ONE-A7C9EF" maxlength="10" autocomplete="off"></label><button id="onlineLeave" class="secondary-button" type="button" hidden>방 나가기</button></div><p>교사는 이 화면을 열어두세요. 학생은 별명과 방 코드를 입력하고 아래 입장하기를 누릅니다. 실시간 퀴즈의 문제 유형과 문제 수는 기존 경기 설정에서 고릅니다.</p>`;
+banner.innerHTML=`<div><span class="panel-kicker">ONLINE ROOM</span><h2>교사 방 생성 / 학생 입장</h2><p id="onlineStatus" role="status">Firebase 연결 준비 중…</p></div><div class="online-controls"><label class="teacher-only-control">게임<select id="onlineKind"><option value="onecard">KDC 원카드</option><option value="quiz">KDC 실시간 퀴즈 (최대 20명)</option></select></label><label class="teacher-only-control">경기 방식<select id="onlineMode"><option value="individual">개인전</option><option value="team">단체전</option></select></label><button id="onlineCreate" class="primary-button" type="button">교사: 방 만들기</button><label>학생 방 코드<input id="onlineCode" placeholder="예: ONE-A7C9EF" maxlength="10" autocomplete="off"></label><button id="onlineLeave" class="secondary-button" type="button" hidden>방 나가기</button></div><p>교사는 이 화면을 열어두세요. 학생은 별명과 방 코드를 입력하고 아래 입장하기를 누릅니다. 실시간 퀴즈의 문제 유형과 문제 수는 기존 경기 설정에서 고릅니다.</p>`;
 $('#onecardLobbyView').prepend(banner);
+const roomManager=document.createElement('section');roomManager.className='panel room-manager';roomManager.innerHTML='<div class="room-manager-heading"><div><span class="panel-kicker">TEACHER ROOM MONITOR</span><h3>진행 중인 방</h3><p>방을 선택하면 해당 게임의 현재 화면으로 이동합니다.</p></div><div class="room-manager-tools"><span id="roomManagerCount">0개 방</span><div class="room-manager-actions"><label>새 방 게임<select id="managerKind"><option value="onecard">KDC 원카드</option><option value="quiz">KDC 실시간 퀴즈</option></select></label><label>경기 방식<select id="managerMode"><option value="individual">개인전</option><option value="team">단체전</option></select></label><button id="managerCreateRoom" class="primary-button" type="button">+ 새 방 만들기</button></div></div></div><div class="teacher-room-list" id="teacherRoomList"></div>';$('#onecardScreen').prepend(roomManager);roomManager.hidden=true;
 const quizView=document.createElement('article');quizView.className='panel online-quiz';quizView.hidden=true;$('#onecardScreen').append(quizView);
 $('#ocJoinName').placeholder='학생 별명 (1~10자)';
 $('#ocTeacherButton').hidden=true;
@@ -44,6 +46,7 @@ function screen() {
 function view(name) {
   quizView.hidden=name!=='quiz';
   ['Lobby','Match','Spectator'].forEach(v=>{$(`#onecard${v}View`).hidden=v.toLowerCase()!==name;});
+  renderRoomManager();
 }
 function renderLogs(selector) {
   $(selector).innerHTML=(pub?.logs||[]).map(l=>`<div class="onecard-log-entry"><time>${new Date(l.time).toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})}</time><span>${escape(l.text)}</span></div>`).join('');
@@ -54,11 +57,12 @@ function render() {
   $('#ocRoomCode').textContent=room;
   $('#ocLobbyCount').textContent=players.length;$('#ocLobbyLimit').textContent=pub.kind==='quiz'?20:pub.mode==='team'?10:5;
   $('#ocJoinButton').hidden=host||!!me;
-  $('#onlineCreate').hidden=!!room;$('#onlineLeave').hidden=!room;
+  $('#onlineCreate').hidden=role==='student';$('#onlineLeave').hidden=role==='student';
+  $$('.teacher-only-control').forEach(el=>el.hidden=role==='student');
   $('#ocCopyRoom').hidden=!room;
   $('#ocJoinTeam').disabled=pub.mode!=='team';
   $('#ocMaxPlayers').value=pub.mode==='team'?'10':'5';
-  $$('.onecard-mode-card').forEach(el=>{el.disabled=!!room;el.classList.toggle('selected',el.dataset.onecardMode===pub.mode);});
+  $$('.onecard-mode-card').forEach(el=>{el.disabled=!!room;el.classList.toggle('selected',el.dataset.onecardMode===$('#onlineMode').value);});
   $('#ocStartButton').hidden=!host;
   $('#ocStartButton').disabled=!claimed||players.length<2;
   $('#ocLobbyHint').textContent=pub.kind==='quiz'?'실시간 퀴즈 · 최대 20명 · 팀 직접 선택':pub.mode==='team'?'각자 팀 버튼을 눌러 선택 · 각 팀 2~5명':'개인전 2~5명 · 교사는 관전만 합니다';
@@ -72,10 +76,17 @@ function render() {
   if(pub.kind==='quiz') {renderQuiz();return;}
   const current=players[pub.turn];const ended=pub.phase==='finished';
   if(host) {
-    view('spectator');$('#ocSpectatorTurn').textContent=ended?pub.winner:current?.name||'—';
+    view('spectator');$('#ocSpectatorTurn').textContent=ended?pub.winner:current?.name||'—';$('#ocSpectatorTableTurn').textContent=ended?pub.winner:current?.name||'—';
     $('#ocSpectatorDiscard').textContent=`${codeOf(pub.top)} → ${String(pub.target).padStart(3,'0')}`;
     $('#ocSpectatorDraw').textContent=`${pub.drawCount}장`;
     $('#ocSpectatorAttack').textContent=pub.attack?`+${pub.attack}`:'없음';
+    $('#ocSpectatorRoom').textContent=room;
+    $('#ocSpectatorTopCode').textContent=codeOf(pub.top);
+    $('#ocSpectatorTopLabel').textContent=pub.top?.label||'KDC 분류';
+    $('#ocSpectatorDirection').textContent=pub.direction===1?'시계 방향':'반시계 방향';
+    $('#ocSpectatorRule').textContent=`맞출 분류 ${String(pub.target).padStart(3,'0')} · 백의 자리 또는 십의 자리`;
+    $('#ocSpectatorPileCount').textContent=pub.drawCount;
+    $('#ocSpectatorTopCard').classList.toggle('special',pub.top?.type!=='normal');
     $('#ocSpectatorPlayerCount').textContent=`${players.length}명`;
     $('#ocSpectatorPlayers').innerHTML=players.map((p,i)=>{
       const cards=engine?.players?.find(q=>q.uid===p.uid)?.hand||[];
@@ -107,6 +118,20 @@ function render() {
     $('#ocActionHint').textContent=ended?pub.winner:pub.onePending&&mine?'지금 원카드! 버튼을 누르세요 (3초)':mine?'밝은 카드를 선택하세요.':'다른 플레이어의 차례입니다.';
     $('#ocOpenSpectator').hidden=true;renderLogs('#ocGameLog');
   }
+  renderRoomManager();
+}
+function renderRoomManager() {
+  const teacher=!!uid&&role!=='student';roomManager.hidden=!teacher;
+  if(!teacher)return;
+  $('.room-manager-actions').hidden=!$('#onecardLobbyView').hidden;
+  const rows=[...roomCatalog.entries()].map(([code,data])=>({code,...data})).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  $('#roomManagerCount').textContent=`${rows.length}개 방`;
+  $('#teacherRoomList').innerHTML=rows.length?rows.map(item=>{
+    const g=item.state||{},live=['match','quiz','quizResult'].includes(g.phase),ended=g.phase==='finished';
+    const detail=g.kind==='quiz'?`${g.players?.length||0}명 · ${(g.questionIndex||0)+1}/${g.totalQuestions||0}문제`:`${g.players?.length||0}명 · ${g.players?.[g.turn]?.name||'차례 대기'}`;
+    return `<button class="teacher-room-card ${item.code===room?'selected':''}" type="button" data-watch-room="${escape(item.code)}"><span class="room-state-dot ${live?'live':ended?'ended':''}"></span><span class="teacher-room-copy"><strong>${g.kind==='quiz'?'실시간 퀴즈':'KDC 원카드'} · ${escape(item.code)}</strong><small>${g.mode==='team'?'단체전':'개인전'} · ${escape(detail)}</small></span><span class="room-phase">${live?'진행 중':ended?'종료':'대기'}</span></button>`;
+  }).join(''):'<div class="room-empty">아직 생성된 방이 없습니다. 위에서 방을 만들면 여기에 표시됩니다.</div>';
+  $$('[data-watch-room]').forEach(button=>button.onclick=()=>guard(()=>attach(button.dataset.watchRoom,true)));
 }
 function renderQuiz() {
   view('quiz');const host=role==='host',me=(pub.players||[]).find(p=>p.uid===uid),q=pub.question,ended=pub.phase==='finished',open=pub.phase==='quiz';
@@ -116,51 +141,101 @@ function renderQuiz() {
   $('#quizNext')?.addEventListener('click',()=>guard(()=>hostAction(g=>nextQuiz(g,now()))));
   $('#quizStop')?.addEventListener('click',()=>guard(()=>hostAction(g=>{g.phase=ended?'lobby':'finished';g.winner=ended?'':'교사가 퀴즈를 종료했습니다.';})));
 }
-async function publish(next,commandId=null,response=null) {
-  next.version=(engine?.version||0)+1;
+async function publish(next,commandId=null,response=null,targetRoom=room) {
+  next.version=(next.version||0)+1;
   const writes={engine:next,public:publicState(next)};
   next.players.forEach(p=>{writes[`hands/${p.uid}`]=p.hand.length?p.hand:null;});
   if(commandId) {writes[`commands/${commandId}`]=null;writes[`responses/${response.uid}/${commandId}`]=response;}
-  await update(path(''),writes);engine=next;pub=publicState(next);render();
+  await update(ref(db,`rooms/${targetRoom}`),writes);
+  const worker=roomWorkers.get(targetRoom);if(worker)worker.engine=next;
+  if(worker)scheduleWorkerDeadline(worker);
+  const snapshot=publicState(next);roomCatalog.set(targetRoom,{...(roomCatalog.get(targetRoom)||{}),state:snapshot,updatedAt:Date.now()});
+  if(targetRoom===room){engine=next;pub=snapshot;render();}
 }
-async function acquire() {
-  const token=await runTransaction(path('lease'),old=>{
-    if(old&&old.tab!==tabId&&old.until>now())return;
-    return {tab:tabId,until:now()+12000};
-  });
-  const changed=claimed!==token.committed;claimed=token.committed;if(changed)render();if(!claimed)return false;
-  return true;
-}
-async function pump() {
-  if(!hostReady||role!=='host'||working||!connected||!room)return;
-  working=true;
+async function pumpWorker(worker) {
+  if(worker.running){worker.pendingCommands=true;return;}
+  if(!connected)return;
+  worker.running=true;
+  worker.pendingCommands=false;
   try {
-    if(!await acquire()) {status('다른 교사 탭이 방을 진행하고 있습니다.');return;}
-    engine=normalize((await get(path('engine'))).val());
-    for(const [id,a] of Object.entries(pending)) {
+    const lease=await runTransaction(ref(db,`rooms/${worker.code}/lease`),old=>{
+      if(old&&old.tab!==tabId&&old.until>now())return;
+      return {tab:tabId,until:now()+12000};
+    });
+    worker.claimed=lease.committed;
+    if(worker.code===room&&claimed!==worker.claimed){claimed=worker.claimed;render();}
+    if(!worker.claimed) {if(worker.code===room)status('다른 교사 화면이 이 방을 진행하고 있습니다.');return;}
+    worker.engine=normalize((await get(ref(db,`rooms/${worker.code}/engine`))).val());
+    const requests=(await get(ref(db,`rooms/${worker.code}/commands`))).val()||{};
+    for(const [id,a] of Object.entries(requests)) {
       if(!a)continue;
-      const next=normalize(structuredClone(engine));let error='';
+      const next=normalize(structuredClone(worker.engine));let error='';
       if(!next.processed[id]) {
         try {tick(next,now());apply(next,a.uid,a,now());} catch(e){error=e.message;}
         next.processed[id]=true;
         const keys=Object.keys(next.processed);if(keys.length>200)delete next.processed[keys[0]];
       }
-      await publish(next,id,{uid:a.uid,ok:!error,message:error||'완료',time:now()});delete pending[id];
+      await publish(next,id,{uid:a.uid,ok:!error,message:error||'완료',time:now()},worker.code);
     }
-    const next=normalize(structuredClone(engine));if(tick(next,now()))await publish(next);
-  } catch(e){fail(e);}finally{working=false;}
+    const next=normalize(structuredClone(worker.engine));if(tick(next,now()))await publish(next,null,null,worker.code);
+  } catch(e){if(worker.code===room)fail(e);else console.error(e);}finally{
+    worker.running=false;scheduleWorkerDeadline(worker);
+    if(worker.pendingCommands){worker.pendingCommands=false;setTimeout(()=>pumpWorker(worker),0);}
+  }
+}
+function scheduleWorkerDeadline(worker) {
+  clearTimeout(worker.wakeTimer);worker.wakeTimer=null;
+  const g=worker.engine;if(!g)return;
+  const deadlines=[];
+  if(g.kind==='quiz'&&g.phase==='quiz'&&g.deadline)deadlines.push(g.deadline);
+  if(g.kind!=='quiz'&&g.phase==='match'){
+    if(g.deadline)deadlines.push(g.deadline);
+    if(g.onePending?.until)deadlines.push(g.onePending.until);
+  }
+  if(deadlines.length)worker.wakeTimer=setTimeout(()=>pumpWorker(worker),Math.max(100,Math.min(...deadlines)-now()+40));
+}
+function ensureRoomWorker(code) {
+  if(roomWorkers.has(code))return roomWorkers.get(code);
+  const worker={code,engine:null,claimed:false,running:false,heartbeat:null,wakeTimer:null,pendingCommands:false,unsub:[]};roomWorkers.set(code,worker);
+  worker.unsub.push(onValue(ref(db,`rooms/${code}/public`),s=>{
+    const state=s.val();if(state)roomCatalog.set(code,{...(roomCatalog.get(code)||{}),state,updatedAt:Date.now()});
+    renderRoomManager();if(code===room&&state){pub=state;render();}
+  },e=>console.error(e)));
+  worker.unsub.push(onValue(ref(db,`rooms/${code}/engine`),s=>{if(s.exists()){worker.engine=normalize(s.val());scheduleWorkerDeadline(worker);}},e=>console.error(e)));
+  worker.unsub.push(onValue(ref(db,`rooms/${code}/commands`),s=>{if(s.exists())void pumpWorker(worker);},e=>console.error(e)));
+  worker.heartbeat=setInterval(()=>pumpWorker(worker),4000);
+  if(connected)void pumpWorker(worker);
+  return worker;
+}
+function syncTeacherRooms(list) {
+  const codes=new Set(Object.keys(list||{}));
+  for(const code of codes)ensureRoomWorker(code);
+  for(const [code,worker] of roomWorkers)if(!codes.has(code)){
+    worker.unsub.forEach(fn=>fn());clearInterval(worker.heartbeat);clearTimeout(worker.wakeTimer);roomWorkers.delete(code);roomCatalog.delete(code);
+  }
+  renderRoomManager();
+}
+function hostRoomState(code,fn) {
+  return runWorkerAction(roomWorkers.get(code),fn);
+}
+async function runWorkerAction(worker,fn) {
+  if(!worker)throw Error('방 진행기를 찾을 수 없습니다.');
+  if(!worker.claimed)await pumpWorker(worker);
+  if(worker.running)throw Error('방 상태를 동기화 중입니다. 잠시 후 다시 눌러주세요.');
+  worker.running=true;
+  try {
+    const lease=await runTransaction(ref(db,`rooms/${worker.code}/lease`),old=>old&&old.tab!==tabId&&old.until>now()?undefined:{tab:tabId,until:now()+12000});
+    if(!lease.committed)throw Error('다른 교사 화면이 이 방을 진행 중입니다.');
+    worker.claimed=true;if(worker.code===room){claimed=true;render();}
+    const g=normalize((await get(ref(db,`rooms/${worker.code}/engine`))).val());fn(g);await publish(g,null,null,worker.code);
+  }finally{worker.running=false;}
 }
 async function hostAction(fn) {
   if(role!=='host'||!hostReady)throw Error('교사 방장만 진행할 수 있습니다.');
-  if(working)throw Error('다른 요청을 처리 중입니다. 잠시 후 다시 눌러주세요.');
-  working=true;
-  try {
-    if(!await acquire())throw Error('다른 교사 탭이 방을 진행하고 있습니다.');
-    const next=normalize((await get(path('engine'))).val());fn(next);await publish(next);
-  }finally{working=false;}
+  return hostRoomState(room,fn);
 }
 async function attach(code,asHost=false) {
-  unsub.forEach(fn=>fn());unsub=[];clearInterval(timer);hostReady=false;pending={};hand=[];engine=null;pub=null;
+  unsub.forEach(fn=>fn());unsub=[];hostReady=false;claimed=false;hand=[];engine=null;pub=null;
   room=code;
   const meta=(await get(path('meta'))).val();
   if(!meta) {room='';throw Error('해당 방이 없습니다. 코드를 확인하세요.');}
@@ -168,14 +243,13 @@ async function attach(code,asHost=false) {
   if(asHost&&role!=='host')throw Error('교사 권한이 없습니다.');
   sessionStorage.kdcRoom=room;
   $('#onlineCode').value=room;
-  unsub.push(onValue(path('public'),s=>{pub=s.val();render();},fail));
+  unsub.push(onValue(path('public'),s=>{pub=s.val();if(pub)roomCatalog.set(code,{...(roomCatalog.get(code)||{}),state:pub,updatedAt:Date.now()});render();renderRoomManager();},fail));
   if(role==='host') {
-    engine=normalize((await get(path('engine'))).val());
-    unsub.push(onValue(path('engine'),s=>{if(s.exists()){engine=normalize(s.val());render();}},fail));
+    await set(ref(db,`teachers/${uid}/${code}`),true);
+    const worker=ensureRoomWorker(code);engine=normalize((await get(path('engine'))).val());worker.engine=engine;
+    unsub.push(onValue(path('engine'),s=>{if(s.exists()){engine=normalize(s.val());worker.engine=engine;render();}},fail));
     hostReady=true;
-    unsub.push(onValue(path('commands'),s=>{pending=s.val()||{};pump();},fail));
-    timer=setInterval(pump,500);
-    await pump();
+    await pumpWorker(worker);
   } else {
     unsub.push(onValue(path(`hands/${uid}`),s=>{hand=s.val()||[];render();},fail));
     unsub.push(onValue(path(`responses/${uid}`),s=>{
@@ -183,7 +257,8 @@ async function attach(code,asHost=false) {
     },fail));
     await set(path(`presence/${uid}`),true);await onDisconnect(path(`presence/${uid}`)).set(false);
   }
-  screen();render();
+  if(role==='student'){roomManager.hidden=true;}
+  screen();render();renderRoomManager();
 }
 const seenResponses=new Set();
 async function send(action) {
@@ -192,15 +267,22 @@ async function send(action) {
   const request=push(path('commands'));
   await set(request,{...action,uid,time:now()});status('교사 화면에서 요청 처리 중…');
 }
-$('#onlineCreate').onclick=()=>guard(async()=>{
+async function createRoom(kind,selectedMode) {
   if(!uid)throw Error('Firebase 연결 준비를 기다려 주세요.');
   const code='ONE-'+[...crypto.getRandomValues(new Uint8Array(3))].map(v=>v.toString(16).padStart(2,'0')).join('').toUpperCase();
-  room=code;
-  const result=await runTransaction(path('meta'),old=>old?undefined:{host:uid,createdAt:now()});
-  if(!result.committed)throw Error('방 코드가 겹쳤습니다. 다시 생성하세요.');
-  const g=newRoom(mode,30,$('#onlineKind').value);await update(path(''),{engine:g,public:publicState(g)});
-  await attach(code,true);status(`방 생성 완료: ${room}. 학생들에게 코드를 알려주세요.`);
-});
+  const previousRoom=room;room=code;
+  mode=selectedMode;
+  try {
+    const result=await runTransaction(path('meta'),old=>old?undefined:{host:uid,createdAt:now(),mode,kind});
+    if(!result.committed)throw Error('방 코드가 겹쳤습니다. 다시 생성하세요.');
+    const g=newRoom(mode,30,kind);await update(path(''),{engine:g,public:publicState(g)});
+    await set(ref(db,`teachers/${uid}/${code}`),true);
+    roomCatalog.set(code,{state:publicState(g),updatedAt:Date.now()});
+    await attach(code,true);status(`방 생성 완료: ${room}. 학생들에게 코드를 알려주세요.`);
+  } catch(e) {if(room===code)room=previousRoom;throw e;}
+}
+$('#onlineCreate').onclick=()=>guard(()=>createRoom($('#onlineKind').value,$('#onlineMode').value));
+$('#managerCreateRoom').onclick=()=>guard(()=>createRoom($('#managerKind').value,$('#managerMode').value));
 $('#ocJoinButton').onclick=()=>guard(async()=>{
   const name=$('#ocJoinName').value.trim();const code=$('#onlineCode').value.trim().toUpperCase();
   if(!name||name.length>10)throw Error('별명을 1~10자로 입력하세요.');
@@ -208,12 +290,25 @@ $('#ocJoinButton').onclick=()=>guard(async()=>{
   await attach(code);await send({type:'join',name,team:$('#ocJoinTeam').value});
 });
 $('#onlineLeave').onclick=()=>guard(async()=>{
-  unsub.forEach(fn=>fn());unsub=[];clearInterval(timer);hostReady=false;room='';role='';pub=null;engine=null;hand=[];sessionStorage.removeItem('kdcRoom');
+  if(role==='host') {
+    unsub.forEach(fn=>fn());unsub=[];room='';claimed=false;pub=null;engine=null;hand=[];sessionStorage.removeItem('kdcRoom');
+    $('#onlineCode').value='';$('#onlineLeave').hidden=true;$('#ocJoinButton').hidden=true;$('#ocStartButton').hidden=true;$('#ocLobbyPlayers').innerHTML='';$('#ocLobbyCount').textContent='0';$('#ocRoomCode').textContent='방을 목록에서 선택하세요';$$('.onecard-mode-card').forEach(el=>el.disabled=false);view('lobby');screen();renderRoomManager();status('진행 중인 방은 계속 돌아갑니다. 목록에서 관전할 방을 선택하세요.');return;
+  }
+  unsub.forEach(fn=>fn());unsub=[];hostReady=false;claimed=false;room='';role='';pub=null;engine=null;hand=[];sessionStorage.removeItem('kdcRoom');
   $('#onlineCreate').hidden=false;$('#onlineLeave').hidden=true;$('#ocJoinButton').hidden=false;$('#ocStartButton').hidden=true;
   $('#ocLobbyPlayers').innerHTML='';$('#ocRoomCode').textContent='방 생성 전';
   $$('.onecard-mode-card').forEach(el=>el.disabled=false);view('lobby');status('방에서 나왔습니다. 진행 중인 방은 같은 코드로 다시 입장할 수 있습니다.');
 });
-$$('.onecard-mode-card').forEach(b=>b.onclick=()=>{mode=b.dataset.onecardMode;$$('.onecard-mode-card').forEach(el=>el.classList.toggle('selected',el===b));$('#ocMaxPlayers').value=mode==='team'?'10':'5';});
+function setCreateMode(value) {
+  mode=value;$('#onlineMode').value=value;$('#managerMode').value=value;
+  $$('.onecard-mode-card').forEach(el=>el.classList.toggle('selected',el.dataset.onecardMode===value));
+  $('#ocMaxPlayers').value=value==='team'?'10':'5';
+}
+$$('.onecard-mode-card').forEach(b=>b.onclick=()=>setCreateMode(b.dataset.onecardMode));
+$('#onlineMode').onchange=()=>setCreateMode($('#onlineMode').value);
+$('#managerMode').onchange=()=>setCreateMode($('#managerMode').value);
+$('#onlineKind').onchange=()=>$('#managerKind').value=$('#onlineKind').value;
+$('#managerKind').onchange=()=>$('#onlineKind').value=$('#managerKind').value;
 $('#ocStartButton').onclick=()=>guard(async()=>hostAction(g=>{
   if(g.kind==='quiz'){const settings=window.kdcQuizSettings();startQuiz(g,window.kdcQuestionBank[settings.deck].slice(0,settings.rounds),now());}
   else start(g,buildDeck(),now());
@@ -230,10 +325,11 @@ $('#ocJoinName').onkeydown=e=>{if(e.key==='Enter')$('#ocJoinButton').click();};
 window.kdcOnline={render};
 setInterval(()=>{const clock=$('#quizClock');if(clock&&pub?.phase==='quiz')clock.textContent=`남은 시간 ${Math.max(0,Math.ceil((pub.deadline-now())/1000))}초`;},250);
 onValue(ref(db,'.info/serverTimeOffset'),s=>{offset=s.val()||0;});
-onValue(ref(db,'.info/connected'),s=>{connected=!!s.val();connection.textContent=connected?'Firebase 실시간 연결':'인터넷 연결 확인 중';if(pub)render();});
+onValue(ref(db,'.info/connected'),s=>{connected=!!s.val();connection.textContent=connected?'Firebase 실시간 연결':'인터넷 연결 확인 중';if(pub)render();if(connected)for(const worker of roomWorkers.values())void pumpWorker(worker);});
 try {
   await auth.authStateReady();
   const credential=auth.currentUser|| (await signInAnonymously(auth)).user;uid=credential.uid;
+  onValue(ref(db,`teachers/${uid}`),s=>syncTeacherRooms(s.val()||{}),fail);
   status('연결 준비 완료. 교사는 방 만들기, 학생은 방 코드와 별명을 입력하세요.');
   if(sessionStorage.kdcRoom)await attach(sessionStorage.kdcRoom);
 }catch(e){fail(e);}

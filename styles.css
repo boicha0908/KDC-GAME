@@ -36,6 +36,28 @@
 .online-quiz-ranking > div { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:10px; border-bottom:1px solid var(--line); font-size:14px; }
 .online-quiz-ranking strong { color:var(--lime); }
 .online-controls select { padding:10px; background:var(--navy-950); color:var(--text); border:1px solid var(--line); border-radius:8px; font:inherit; }
+.room-manager { padding:20px; margin-bottom:18px; border-color:rgba(199,255,74,.22); }
+.room-manager-heading { display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap; }
+.room-manager-heading h3 { margin:5px 0 3px; font-size:20px; }
+.room-manager-heading p { color:var(--muted); font-size:12px; margin:0; }
+.room-manager-tools { display:grid; justify-items:end; gap:10px; }
+.room-manager-tools > span { color:var(--lime); font-size:11px; font-weight:800; }
+.room-manager-actions { display:flex; align-items:end; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
+.room-manager-actions label { display:grid; gap:5px; color:var(--muted); font-size:10px; }
+.room-manager-actions select { min-height:38px; max-width:175px; padding:7px 9px; border:1px solid var(--line); border-radius:7px; background:var(--navy-950); color:var(--text); font:inherit; }
+.room-manager-actions .primary-button { min-height:38px; padding:0 12px; font-size:11px; }
+.teacher-room-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr)); gap:9px; margin-top:15px; }
+.teacher-room-card { display:grid; grid-template-columns:10px minmax(0,1fr) auto; align-items:center; gap:10px; min-height:67px; padding:10px 12px; border:1px solid var(--line); border-radius:9px; background:rgba(13,21,37,.78); color:var(--text); text-align:left; }
+.teacher-room-card:hover, .teacher-room-card.selected { border-color:rgba(199,255,74,.65); background:rgba(199,255,74,.07); }
+.teacher-room-copy { min-width:0; display:grid; gap:5px; }
+.teacher-room-copy strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; }
+.teacher-room-copy small { overflow:hidden; color:var(--muted); text-overflow:ellipsis; white-space:nowrap; font-size:10px; }
+.room-state-dot { width:8px; height:8px; border-radius:50%; background:#76849a; }
+.room-state-dot.live { background:var(--lime); box-shadow:0 0 10px rgba(199,255,74,.6); }
+.room-state-dot.ended { background:var(--coral); }
+.room-phase { padding:5px 7px; border-radius:999px; background:rgba(184,205,235,.08); color:var(--muted); font-size:9px; white-space:nowrap; }
+.teacher-room-card:has(.room-state-dot.live) .room-phase { background:rgba(199,255,74,.12); color:var(--lime); }
+.room-empty { grid-column:1/-1; padding:16px; border:1px dashed var(--line); border-radius:8px; color:var(--muted); font-size:11px; }
 html { min-width: 320px; background: var(--navy-950); }
 body { margin: 0; min-width: 320px; background: var(--navy-950); color: var(--text); }
 button, input, select { font: inherit; }
@@ -418,6 +440,26 @@ input[type="range"] { width: 100%; accent-color: var(--lime); }
 .onecard-log-entry b { color: var(--text); }
 .onecard-log-entry .log-special { color: var(--coral); }
 .onecard-spectator-top p { color: var(--muted); font-size: 12px; margin-top: 8px; }
+.spectator-table { margin-bottom:18px; padding:20px clamp(16px,3vw,28px); background:radial-gradient(ellipse at 50% 120%,rgba(57,90,79,.27),transparent 65%),var(--navy-900); }
+.spectator-table-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.spectator-table-heading h3 { margin:6px 0 0; font-size:16px; }
+.spectator-table-heading .panel-kicker b { color:var(--text); }
+.spectator-direction { color:var(--muted); font-size:11px; }
+.spectator-table-center { display:grid; grid-template-columns:minmax(100px,1fr) minmax(130px,190px) minmax(140px,1fr); align-items:center; gap:clamp(18px,5vw,70px); max-width:720px; min-height:210px; margin:12px auto 0; }
+.spectator-draw-pile { display:grid; justify-items:center; gap:6px; width:92px; min-height:120px; margin:auto; padding:20px 10px; border:1px solid rgba(199,255,74,.35); border-radius:12px; background:linear-gradient(145deg,#1c2b43,#111b2e); box-shadow:5px 6px 0 rgba(199,255,74,.1),0 16px 35px rgba(0,0,0,.2); }
+.spectator-draw-pile strong { color:var(--lime); font-size:24px; }
+.spectator-draw-pile span { font-size:10px; font-weight:900; letter-spacing:.12em; }
+.spectator-draw-pile small { color:var(--muted); font-size:9px; }
+.spectator-discard-card { display:grid; justify-items:center; align-content:center; gap:8px; width:100%; max-width:170px; min-height:180px; margin:auto; border:2px solid rgba(199,255,74,.66); border-radius:16px; background:linear-gradient(155deg,#263849,#172638); box-shadow:0 0 38px rgba(199,255,74,.1); transform:rotate(-2deg); }
+.spectator-discard-card > span { color:var(--muted); font-size:10px; }
+.spectator-discard-card > strong { color:var(--lime); font-size:clamp(34px,5vw,52px); line-height:1; font-weight:950; letter-spacing:-.06em; }
+.spectator-discard-card > small { color:var(--text); font-size:12px; }
+.spectator-discard-card.special { border-color:rgba(255,115,101,.72); background:linear-gradient(155deg,#483139,#281e2a); }
+.spectator-discard-card.special > strong { color:var(--coral); }
+.spectator-target { display:grid; justify-items:center; gap:8px; text-align:center; }
+.spectator-target > span { color:var(--muted); font-size:10px; }
+.spectator-target > strong { color:var(--text); font-size:clamp(19px,3vw,28px); }
+.spectator-target > small { color:var(--lime); font-size:10px; line-height:1.5; }
 .spectator-summary { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; margin-bottom: 18px; }
 .spectator-summary .panel { display: grid; gap: 7px; padding: 16px; }
 .spectator-summary span { color: var(--muted); font-size: 10px; }
@@ -458,4 +500,15 @@ input[type="range"] { width: 100%; accent-color: var(--lime); }
   .draw-pile { width: 72px; }
   .discard-card { width: 100px; }
   .spectator-summary { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .room-manager { padding:15px; }
+  .room-manager-tools { justify-items:start; width:100%; }
+  .room-manager-actions { justify-content:flex-start; width:100%; }
+  .room-manager-actions label { flex:1; min-width:120px; }
+  .room-manager-actions select { width:100%; max-width:none; }
+  .teacher-room-list { grid-template-columns:1fr; }
+  .spectator-table-center { grid-template-columns:72px minmax(88px,120px) minmax(0,1fr); gap:10px; min-height:165px; }
+  .spectator-draw-pile { width:66px; min-height:100px; padding:12px 5px; }
+  .spectator-discard-card { min-height:145px; }
+  .spectator-target > strong { font-size:17px; overflow-wrap:anywhere; }
+  .spectator-target > small { font-size:9px; }
 }
