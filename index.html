@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0d1525" />
+  <meta name="description" content="중·고등학생을 위한 KDC 도서관 퀴즈 아레나" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d1525'/%3E%3Cpath d='M17 16h28a4 4 0 0 1 4 4v30H21a4 4 0 0 1-4-4V16Z' fill='%23c7ff4a'/%3E%3Cpath d='M21 21h20M21 28h20M21 35h14' stroke='%230d1525' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E" />
+  <title>KDC ARENA · 도서관 분류 게임</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-lockup" aria-label="KDC Arena">
+        <span class="brand-mark">K</span>
+        <div>
+          <strong>KDC ARENA</strong>
+          <span>도서관 분류 게임</span>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <span class="connection-pill"><i></i><span id="connectionText">로컬 시연 모드</span></span>
+        <button class="ghost-button" id="helpButton" type="button">진행 안내</button>
+        <button class="avatar-button" id="roleToggle" type="button" aria-label="교사와 학생 화면 전환">교사</button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <aside class="sidebar" aria-label="주 메뉴">
+        <div class="class-chip">
+          <span class="live-dot"></span>
+          <div>
+            <strong>공유학교 · 도서관</strong>
+            <span>오늘의 수업</span>
+          </div>
+        </div>
+        <nav class="main-nav">
+          <button class="nav-item active" data-screen="setup" type="button"><span>⌂</span>경기 설정</button>
+          <button class="nav-item" data-screen="play" type="button"><span>▶</span>경기 화면</button>
+          <button class="nav-item" data-screen="onecard" type="button"><span>◈</span>원카드</button>
+          <button class="nav-item" data-screen="results" type="button"><span>✦</span>결과 보기</button>
+        </nav>
+        <div class="sidebar-note">
+          <span class="note-icon">!</span>
+          <div>
+            <strong>진행 팁</strong>
+            <p>전자칠판에는 교사 화면을, 학생 기기에는 학생 화면을 띄워 보세요.</p>
+          </div>
+        </div>
+        <div class="sidebar-footer">KDC 10개 주류 · 중·고등학생용</div>
+      </aside>
+
+      <main class="main-content">
+        <section class="screen active" id="setupScreen" aria-labelledby="setupTitle">
+          <div class="screen-heading">
+            <div>
+              <div class="eyebrow">MATCH LOBBY / 01</div>
+              <h1 id="setupTitle">오늘의 경기 만들기</h1>
+              <p>학생들이 방 코드로 입장하면 바로 시작할 수 있어요.</p>
+            </div>
+            <div class="room-code-card">
+              <span>방 코드</span>
+              <strong id="roomCode">KDC-7F3A</strong>
+              <button id="copyCodeButton" type="button">코드 복사</button>
+            </div>
+          </div>
+
+          <div class="setup-grid">
+            <div class="setup-main-column">
+              <article class="panel mode-panel">
+                <div class="panel-heading">
+                  <div>
+                    <span class="panel-kicker">PLAY STYLE</span>
+                    <h2>경기 방식을 선택하세요</h2>
+                  </div>
+                  <span class="panel-index">01</span>
+                </div>
+                <div class="choice-grid two-col" role="group" aria-label="경기 방식">
+                  <button class="choice-card selected" data-mode="individual" type="button">
+                    <span class="choice-icon lime">◎</span>
+                    <span><strong>개인전</strong><small>각자 답하고 나의 기록을 쌓아요</small></span>
+                    <span class="choice-check">✓</span>
+                  </button>
+                  <button class="choice-card" data-mode="team" type="button">
+                    <span class="choice-icon coral">⚡</span>
+                    <span><strong>단체전</strong><small>2인 이상 팀으로 함께 도전해요</small></span>
+                    <span class="choice-check">✓</span>
+                  </button>
+                </div>
+                <div class="setup-subrow">
+                  <label for="teamCount">팀 수</label>
+                  <select id="teamCount" disabled>
+                    <option value="4">4팀</option>
+                    <option value="5" selected>5팀</option>
+                    <option value="6">6팀</option>
+                  </select>
+                  <span class="subhint">원카드 단체전에서는 팀을 직접 선택합니다</span>
+                </div>
+              </article>
+
+              <article class="panel type-panel">
+                <div class="panel-heading">
+                  <div>
+                    <span class="panel-kicker">QUESTION DECK</span>
+                    <h2>문제 덱을 고르세요</h2>
+                  </div>
+                  <span class="panel-index">02</span>
+                </div>
+                <div class="choice-grid two-col">
+                  <button class="deck-card selected" data-deck="card" type="button">
+                    <span class="deck-visual cards-visual"><b>900</b><b>주제</b><b>짝!</b></span>
+                    <span class="deck-copy"><strong>카드 매칭</strong><small>KDC 카드와 주제 카드를 짝 맞추기</small></span>
+                    <span class="deck-tag">추천</span>
+                  </button>
+                  <button class="deck-card" data-deck="book" type="button">
+                    <span class="deck-visual book-visual"><b>BOOK</b><em>표지</em></span>
+                    <span class="deck-copy"><strong>책 표지 퀴즈</strong><small>책 제목과 주제를 보고 분류하기</small></span>
+                    <span class="deck-tag alt">이미지형</span>
+                  </button>
+                </div>
+                <div class="round-config">
+                  <div class="round-label"><span>라운드</span><strong id="roundValue">8문제</strong></div>
+                  <input type="range" id="roundSlider" min="5" max="12" value="8" aria-label="문제 수" />
+                  <div class="range-scale"><span>빠르게 5</span><span>집중 12</span></div>
+                </div>
+              </article>
+
+              <article class="panel lobby-panel">
+                <div class="panel-heading compact">
+                  <div>
+                    <span class="panel-kicker">LIVE LOBBY</span>
+                    <h2>참가자 대기실 <span id="playerCount">12</span>/20</h2>
+                  </div>
+                  <button class="text-button" id="autoFillButton" type="button">20명으로 채우기 <span>↗</span></button>
+                </div>
+                <div class="player-list" id="playerList" aria-live="polite"></div>
+                <div class="join-row">
+                  <input id="playerNameInput" type="text" maxlength="10" placeholder="학생 이름 입력" aria-label="학생 이름" />
+                  <button class="secondary-button" id="addPlayerButton" type="button">참가 추가</button>
+                </div>
+              </article>
+            </div>
+
+            <aside class="setup-side-column">
+              <article class="panel start-panel">
+                <div class="start-panel-top"><span class="live-dot"></span><span>READY TO PLAY</span></div>
+                <h2>준비되었나요?</h2>
+                <p>학생들이 모두 입장했다면<br />경기를 시작하세요.</p>
+                <div class="ready-stats">
+                  <div><strong id="readyCount">12</strong><span>참가자</span></div>
+                  <div><strong id="readyTeamCount">1</strong><span>개인전</span></div>
+                  <div><strong id="readyRoundCount">8</strong><span>문제</span></div>
+                </div>
+                <button class="primary-button full" id="startButton" type="button">경기 시작 <span>→</span></button>
+                <span class="microcopy">시작 후에도 교사 화면에서 일시정지할 수 있어요</span>
+              </article>
+              <article class="panel rules-panel">
+                <div class="panel-heading compact"><h2>수업용 기본 규칙</h2><span class="panel-index">TIP</span></div>
+                <ul class="rule-list">
+                  <li><span>01</span><p>정답 <b>+100점</b> · 빠른 정답은 보너스</p></li>
+                  <li><span>02</span><p>오답은 감점 없이 다음 문제로</p></li>
+                  <li><span>03</span><p>동점이면 마지막 문제 속도로 결정</p></li>
+                </ul>
+              </article>
+            </aside>
+          </div>
+        </section>
+
+        <section class="screen" id="playScreen" aria-labelledby="playTitle">
+          <div class="play-topline">
+            <div>
+              <div class="eyebrow">LIVE MATCH / <span id="playModeLabel">개인전</span></div>
+              <h1 id="playTitle">KDC 카드 매칭</h1>
+            </div>
+            <div class="play-actions"><button class="ghost-button" id="pauseButton" type="button">Ⅱ 일시정지</button><button class="danger-button" id="endButton" type="button">경기 종료</button></div>
+          </div>
+          <div class="match-layout">
+            <aside class="scoreboard panel">
+              <div class="scoreboard-head"><span>순위</span><span>점수</span></div>
+              <div id="scoreboardRows"></div>
+            </aside>
+            <div class="question-stage">
+              <div class="progress-row"><span>ROUND <b id="questionNumber">01</b> / <span id="questionTotal">08</span></span><div class="progress-track"><i id="progressBar"></i></div><span class="timer" id="timer">00:20</span></div>
+              <article class="question-card panel" id="questionCard">
+                <div class="question-meta"><span class="tag">KDC 10개 주류</span><span id="questionTypeLabel">카드 매칭</span></div>
+                <div id="questionContent"></div>
+                <div class="answer-grid" id="answerGrid"></div>
+                <div class="question-footer"><span id="questionHint">가장 알맞은 분류를 골라 주세요.</span><button class="text-button" id="nextButton" type="button" disabled>다음 문제 <span>→</span></button></div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="onecardScreen" aria-labelledby="onecardTitle">
+          <div class="screen-heading onecard-heading">
+            <div>
+              <div class="eyebrow">KDC ONE CARD / ROOM LOBBY</div>
+              <h1 id="onecardTitle">KDC 원카드 보드게임</h1>
+              <p>백의 자리 또는 십의 자리가 맞는 카드를 내고, 마지막 한 장을 지켜내세요.</p>
+            </div>
+            <div class="onecard-status"><span class="live-dot"></span><span>최대 10명 · 교사 관전 지원</span></div>
+          </div>
+
+          <div class="onecard-view" id="onecardLobbyView">
+            <div class="onecard-lobby-grid">
+              <div class="onecard-lobby-main">
+                <article class="panel onecard-setup-panel">
+                  <div class="panel-heading">
+                    <div><span class="panel-kicker">MATCH TYPE</span><h2>경기 모드를 선택하세요</h2></div>
+                    <span class="panel-index">01</span>
+                  </div>
+                  <div class="onecard-mode-grid">
+                    <button class="onecard-mode-card selected" data-onecard-mode="individual" type="button"><span class="mode-symbol">◎</span><span><strong>개인전</strong><small>2~5명 · 각자 가장 먼저 0장 만들기</small></span><b>✓</b></button>
+                    <button class="onecard-mode-card" data-onecard-mode="team" type="button"><span class="mode-symbol coral">⚡</span><span><strong>단체전</strong><small>4~10명 · A팀과 B팀을 직접 선택</small></span><b>✓</b></button>
+                  </div>
+                  <div class="onecard-form-row">
+                    <label for="ocMaxPlayers">최대 인원</label>
+                    <select id="ocMaxPlayers"><option value="5" selected>5명 (개인전)</option><option value="10">10명 (단체전)</option></select>
+                    <label for="ocTeamSplit">팀 배정</label>
+                    <select id="ocTeamSplit"><option value="manual" selected>직접 선택</option></select>
+                  </div>
+                </article>
+
+                <article class="panel onecard-lobby-panel">
+                  <div class="panel-heading compact"><div><span class="panel-kicker">ROOM CODE</span><h2>친구를 방에 초대하세요</h2></div><div class="onecard-room-code" id="ocRoomCode">ONE-7F3A</div></div>
+                  <div class="onecard-room-actions"><button class="secondary-button" id="ocCopyRoom" type="button">방 코드 복사</button><span>학생 화면에서는 교사가 공유한 코드로 입장합니다.</span></div>
+                  <div class="onecard-join-row"><input id="ocJoinName" type="text" maxlength="10" placeholder="플레이어 이름" aria-label="원카드 플레이어 이름" /><select id="ocJoinTeam" aria-label="팀 선택" disabled><option value="A">A팀</option><option value="B">B팀</option></select><button class="primary-button" id="ocJoinButton" type="button">입장하기 <span>→</span></button></div>
+                  <div class="onecard-lobby-meta"><span>참가자 <b id="ocLobbyCount">0</b>/<b id="ocLobbyLimit">5</b></span><span id="ocLobbyHint">개인전은 2명 이상이면 시작할 수 있어요.</span></div>
+                  <div class="onecard-lobby-list" id="ocLobbyPlayers" aria-live="polite"></div>
+                  <button class="primary-button full onecard-start-button" id="ocStartButton" type="button">원카드 경기 시작 <span>→</span></button>
+                </article>
+              </div>
+              <aside class="onecard-lobby-side">
+                <article class="panel onecard-rule-panel"><div class="panel-heading compact"><div><span class="panel-kicker">HOW TO PLAY</span><h2>원카드 핵심 규칙</h2></div><span class="panel-index">02</span></div><ol class="onecard-rule-list"><li><span>01</span><p>처음에 모두 <b>6장</b>을 받고 중앙 카드와 백의 자리 또는 십의 자리를 맞춥니다.</p></li><li><span>02</span><p>낼 카드가 없으면 드로우 덱에서 <b>1장</b>을 가져오고 차례를 넘깁니다.</p></li><li><span>03</span><p>손패가 2장일 때 1장을 내며 <b>원카드!</b>를 누르지 않으면 벌칙 1장입니다.</p></li><li><span>04</span><p><b>+2/+3</b>은 누적 공격, 유턴·스킵은 흐름을 바꾸고 조커는 분류번호를 바꿉니다.</p></li></ol></article>
+                <article class="panel onecard-deck-panel"><span class="panel-kicker">DECK</span><div class="deck-summary"><strong>80</strong><span>총 카드</span></div><div class="deck-breakdown"><span><i class="normal-dot"></i>일반 56장</span><span><i class="special-dot"></i>특수 24장</span></div><button class="secondary-button full" id="ocTeacherButton" type="button">교사 관전 화면 열기 <span>↗</span></button></article>
+              </aside>
+            </div>
+          </div>
+
+          <div class="onecard-view" id="onecardMatchView" hidden>
+            <div class="onecard-match-top"><div><div class="eyebrow">LIVE TABLE / <span id="ocMatchMode">개인전</span></div><h2><span id="ocTurnName">민서</span>님의 차례</h2></div><div class="onecard-match-actions"><span class="turn-pill" id="ocTurnPill">TURN 01</span><button class="ghost-button" id="ocBackLobby" type="button">방 설정</button><button class="ghost-button" id="ocOpenSpectator" type="button">관전 화면</button></div></div>
+            <div class="onecard-match-grid">
+              <aside class="panel onecard-player-panel"><div class="panel-heading compact"><div><span class="panel-kicker">PLAYERS</span><h2>플레이어 상태</h2></div><span class="panel-index" id="ocDirectionLabel">시계 방향</span></div><div id="ocMatchPlayers"></div><div class="active-player-select"><label for="ocActivePlayer">내 화면 미리보기</label><select id="ocActivePlayer"></select></div></aside>
+              <div class="onecard-table-stage">
+                <div class="onecard-table-meta"><span>드로우 덱 <b id="ocDrawCount">68</b>장</span><span class="attack-badge" id="ocAttackBadge" hidden>공격 +<b>0</b></span><span>현재 차례 <b id="ocCurrentTurnLabel">민서</b></span></div>
+                <div class="onecard-board panel"><button class="draw-pile" id="ocDrawButton" type="button"><span class="pile-count" id="ocDrawPileCount">68</span><strong>DRAW</strong><small>카드 1장 받기</small></button><div class="discard-area"><span class="discard-caption">바닥 카드</span><div class="discard-card" id="ocDiscardCard"></div><p id="ocRuleHint">백의 자리 또는 십의 자리가 맞는 카드를 내세요.</p></div></div>
+                <div class="onecard-action-bar"><div class="onecard-action-copy"><span class="panel-kicker">YOUR HAND</span><p id="ocActionHint">카드를 선택해 제출하세요.</p></div><button class="onecard-call-button" id="ocOneCardButton" type="button" disabled>ONE CARD! <span>1</span></button></div>
+                <div class="onecard-hand" id="ocHand" aria-live="polite"></div>
+              </div>
+              <aside class="panel onecard-log-panel"><div class="panel-heading compact"><div><span class="panel-kicker">LIVE LOG</span><h2>게임 로그</h2></div><span class="live-log-dot"></span></div><div class="onecard-log" id="ocGameLog"></div></aside>
+            </div>
+          </div>
+
+          <div class="onecard-view" id="onecardSpectatorView" hidden>
+            <div class="onecard-spectator-top"><div><div class="eyebrow">TEACHER / SPECTATOR VIEW</div><h2>교사 관전 대시보드</h2><p>모든 플레이어의 손패 수, 현재 차례, 바닥 카드와 진행 로그를 한눈에 확인합니다.</p></div><div class="onecard-match-actions"><span class="turn-pill lime-pill">LIVE</span><button class="ghost-button" id="ocBackMatch" type="button">플레이어 화면</button><button class="danger-button" id="ocStopMatch" type="button">경기 종료</button></div></div>
+            <div class="spectator-summary"><div class="panel"><span>현재 차례</span><strong id="ocSpectatorTurn">민서</strong></div><div class="panel"><span>바닥 카드</span><strong id="ocSpectatorDiscard">120</strong></div><div class="panel"><span>드로우 덱</span><strong id="ocSpectatorDraw">68장</strong></div><div class="panel"><span>공격 누적</span><strong id="ocSpectatorAttack">없음</strong></div></div>
+            <div class="spectator-grid"><article class="panel spectator-players-panel"><div class="panel-heading compact"><div><span class="panel-kicker">ALL PLAYERS</span><h2>플레이어 보드</h2></div><span class="panel-index" id="ocSpectatorPlayerCount">0명</span></div><div id="ocSpectatorPlayers"></div></article><article class="panel spectator-log-panel"><div class="panel-heading compact"><div><span class="panel-kicker">EVENT STREAM</span><h2>최근 진행 로그</h2></div><span class="live-log-dot"></span></div><div class="onecard-log" id="ocSpectatorLog"></div></article></div>
+          </div>
+        </section>
+
+        <section class="screen" id="resultsScreen" aria-labelledby="resultsTitle">
+          <div class="screen-heading results-heading">
+            <div><div class="eyebrow">MATCH COMPLETE / 03</div><h1 id="resultsTitle">오늘의 경기 결과</h1><p>함께 만든 기록을 확인하고 다음 도전을 준비하세요.</p></div>
+            <button class="secondary-button" id="restartButton" type="button">새 경기 만들기</button>
+          </div>
+          <div class="results-grid">
+            <article class="panel winner-card"><span class="trophy">✦</span><span class="panel-kicker">TODAY'S MVP</span><h2 id="winnerName">민서</h2><p id="winnerScore">800점 · 8문제 중 8문제 정답</p><div class="winner-bar"><span></span></div><small>정확도와 속도를 모두 잡았어요</small></article>
+            <article class="panel results-table-panel"><div class="panel-heading compact"><div><span class="panel-kicker">LEADERBOARD</span><h2>최종 순위</h2></div><button class="text-button" id="downloadButton" type="button">기록 저장 <span>↓</span></button></div><div id="resultsRows"></div></article>
+          </div>
+          <article class="panel reflection-panel"><div><span class="panel-kicker">NEXT STEP</span><h2>수업에서 한 번 더 이야기해 볼까요?</h2><p>“문학은 왜 800일까?”처럼 정답의 이유를 서로 설명하면 기억이 오래 남아요.</p></div><button class="primary-button" id="reflectionButton" type="button">회고 질문 보기 <span>↗</span></button></article>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="helpModal" hidden>
+    <div class="modal panel" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+      <button class="modal-close" id="closeHelp" type="button" aria-label="닫기">×</button>
+      <span class="panel-kicker">QUICK GUIDE</span>
+      <h2 id="helpTitle">수업 진행 3단계</h2>
+      <ol class="guide-list"><li><span>01</span><div><strong>방 코드 공유</strong><p>교사 화면의 코드를 전자칠판에 띄우고 학생에게 알려 주세요.</p></div></li><li><span>02</span><div><strong>게임 방식 선택</strong><p>개인전 또는 단체전, 카드 매칭 또는 책 표지 퀴즈를 선택합니다.</p></div></li><li><span>03</span><div><strong>경기 시작</strong><p>학생이 모두 들어오면 시작 버튼을 누르고 라운드를 진행합니다.</p></div></li></ol>
+      <button class="primary-button full" id="closeHelpButton" type="button">확인</button>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="studentJoinModal" hidden>
+    <div class="modal panel" role="dialog" aria-modal="true" aria-labelledby="studentJoinTitle">
+      <button class="modal-close" id="closeStudentJoin" type="button" aria-label="닫기">×</button>
+      <span class="panel-kicker">STUDENT ENTRY</span>
+      <h2 id="studentJoinTitle">학생 화면으로 입장</h2>
+      <p class="modal-intro">교사가 알려준 방 코드와 이름을 입력하세요.</p>
+      <label class="form-label" for="studentRoomInput">방 코드</label>
+      <input class="modal-input" id="studentRoomInput" type="text" value="KDC-7F3A" maxlength="8" aria-label="방 코드" />
+      <label class="form-label" for="studentNameInput">이름</label>
+      <input class="modal-input" id="studentNameInput" type="text" maxlength="10" placeholder="예: 민서" aria-label="학생 이름" />
+      <button class="primary-button full" id="studentJoinButton" type="button">입장하기 <span>→</span></button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+  <script type="module" src="online.js"></script>
+</body>
+</html>
