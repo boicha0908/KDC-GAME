@@ -22,6 +22,17 @@
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 .online-entry { padding: 22px; margin-bottom: 20px; }
+.teacher-heading { align-items:center; }
+.teacher-account { display:flex; align-items:center; gap:10px; flex-wrap:wrap; color:var(--muted); font-size:12px; }
+.teacher-login-card { display:grid; justify-items:start; gap:12px; max-width:620px; padding:clamp(22px,4vw,36px); }
+.teacher-login-card h2, .teacher-no-room h2 { font-size:22px; }
+.teacher-login-card p, .teacher-no-room p { max-width:600px; color:var(--muted); font-size:13px; line-height:1.65; }
+.teacher-no-room { padding:28px; margin-top:16px; }
+#teacherRoomManagerArea:empty, #teacherRoomEntry:empty { display:none; }
+#teacherRoomStage:empty { display:none; }
+#teacherRoomStage > .onecard-view { margin-top:18px; }
+.teacher-screen #teacherRoomStage .onecard-lobby-grid { align-items:start; }
+.teacher-screen #teacherRoomStage .online-quiz { margin-top:18px; }
 .online-entry p { color: var(--muted); margin-top: 10px; font-size: 14px; line-height: 1.6; }
 .online-controls { display:flex; gap:12px; align-items:end; flex-wrap:wrap; margin-top:18px; }
 .online-controls label { display:grid; gap:6px; color:var(--muted); font-size:14px; }

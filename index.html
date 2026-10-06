@@ -261,6 +261,29 @@
           </div>
         </section>
 
+        <section class="screen teacher-screen" id="teacherScreen" aria-labelledby="teacherTitle">
+          <div class="screen-heading teacher-heading">
+            <div>
+              <div class="eyebrow">TEACHER CONTROL ROOM</div>
+              <h1 id="teacherTitle">교사 대시보드</h1>
+              <p>게임 화면과 분리된 교사 전용 공간입니다. 여러 방을 오가며 관전할 수 있어요.</p>
+            </div>
+            <div class="teacher-account"><span id="teacherAccountEmail">Google 계정 로그인 필요</span><button class="ghost-button" id="teacherLogout" type="button" hidden>로그아웃</button></div>
+          </div>
+          <article class="panel teacher-login-card" id="teacherLoginCard">
+            <span class="panel-kicker">TEACHER SIGN IN</span>
+            <h2>Google 계정으로 로그인</h2>
+            <p>교사 계정으로 로그인하면 방 생성·명단 관리·실시간 관전 기능을 사용할 수 있습니다.</p>
+            <button class="primary-button" id="teacherGoogleLogin" type="button">Google 계정으로 로그인 <span>→</span></button>
+          </article>
+          <div id="teacherDashboardContent" hidden>
+            <div id="teacherRoomEntry"></div>
+            <div id="teacherRoomManagerArea"></div>
+            <article class="panel teacher-no-room" id="teacherNoRoom"><span class="panel-kicker">ROOM MONITOR</span><h2>관전할 방을 선택하세요</h2><p>위 목록에서 방을 고르면 학생들이 보는 실제 진행 화면이 여기에 실시간으로 표시됩니다.</p></article>
+            <div id="teacherRoomStage"></div>
+          </div>
+        </section>
+
         <section class="screen" id="resultsScreen" aria-labelledby="resultsTitle">
           <div class="screen-heading results-heading">
             <div><div class="eyebrow">MATCH COMPLETE / 03</div><h1 id="resultsTitle">오늘의 경기 결과</h1><p>함께 만든 기록을 확인하고 다음 도전을 준비하세요.</p></div>

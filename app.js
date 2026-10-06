@@ -82,13 +82,13 @@ function setScreen(screen) {
 }
 
 async function openTeacherDashboard() {
-  if (!window.kdcOnline?.enterTeacherMode) return showToast("Firebase 연결을 준비 중입니다. 잠시 후 다시 눌러 주세요.");
+  if (!window.kdcOnline?.enterTeacherMode) return showToast("교사 화면을 준비 중입니다. 잠시 후 다시 눌러 주세요.");
   try {
     const entered = await window.kdcOnline.enterTeacherMode();
     if (entered === false) return;
     $("#studentJoinModal").hidden = true;
     $("#roleToggle").textContent = "교사";
-    $("#connectionText").textContent = "교사 화면 · Firebase";
+    $("#connectionText").textContent = "교사 대시보드";
   } catch (error) { showToast(error.message || "교사 화면을 열지 못했습니다."); }
 }
 
@@ -99,7 +99,7 @@ function renderPlayers() {
   $("#readyCount").textContent = state.players.length;
   $("#readyTeamCount").textContent = state.mode === "team" ? `${Math.max(2, Math.min(6, Number($("#teamCount").value)))}팀` : "개인전";
   $("#readyRoundCount").textContent = state.rounds;
-  $("#startButton").disabled = state.players.length < 2;
+  $("#startButton").disabled = false;
 }
 
 function renderScoreboard() {
@@ -225,7 +225,10 @@ function setupInteractions() {
   $("#roundSlider").addEventListener("input", (event) => { state.rounds = Number(event.target.value); $("#roundValue").textContent = `${state.rounds}문제`; renderPlayers(); });
   $("#teamCount").addEventListener("change", renderPlayers);
   $("#startButton").addEventListener("click", () => {
-    if (state.players.length < 2) return showToast("학생을 2명 이상 입장시켜 주세요.");
+    if (state.players.length === 0) {
+      state.players.push({ name: "우리 반", score: 0, team: 1 });
+      renderPlayers();
+    }
     state.currentQuestion = 0;
     state.players.forEach((player) => { player.score = 0; });
     renderScoreboard();
