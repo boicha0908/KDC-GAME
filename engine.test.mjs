@@ -3,6 +3,12 @@ import {newRoom,buildDeck,apply,start,startQuiz,nextQuiz,playable,tick,publicSta
 const deck=buildDeck();
 assert.equal(deck.length,80);assert.equal(deck.filter(c=>c.type==='normal').length,56);
 assert.equal(new Set(deck.map(c=>c.id)).size,80);
+const reservedRoom=newRoom('individual',30,'onecard',2);
+reservedRoom.players.push({uid:'reserved_1',name:'민서',team:'A',hand:[],score:0,correct:0,pendingJoin:true});reservedRoom.captainUid='reserved_1';
+apply(reservedRoom,'device-2',{type:'join',name:'도윤',team:'A'},1);assert.throws(()=>start(reservedRoom,buildDeck(),10));
+apply(reservedRoom,'device-1',{type:'join',name:'민서',team:'A'},2);
+assert.equal(reservedRoom.players.length,2);assert.equal(reservedRoom.players[0].uid,'device-1');assert.equal(reservedRoom.players[0].pendingJoin,false);assert.equal(reservedRoom.captainUid,'device-1');
+start(reservedRoom,buildDeck(),10);assert.equal(reservedRoom.phase,'match');
 let g=newRoom();apply(g,'u1',{type:'join',name:'하나',team:'A'},1);apply(g,'u2',{type:'join',name:'둘',team:'B'},1);
 start(g,deck,100);assert.equal(g.players[0].hand.length,6);assert.equal(g.deck.length,67);
 const publicData=publicState(g);assert.ok(!('deck' in publicData));assert.ok(!('hand' in publicData.players[0]));

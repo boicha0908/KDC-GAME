@@ -8,7 +8,7 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getDatabase(app);
 let uid='',room='',role='',pub=null,hand=[],engine=null,connected=false,offset=0,claimed=false,hostReady=false,hasTeacherAccess=false;
-let mode='individual',unsub=[],busy=false;
+let mode='individual',unsub=[],busy=false,authInitialization=Promise.resolve();
 const roomWorkers=new Map(),roomCatalog=new Map();
 const tabId=crypto.randomUUID();
 const now=()=>Date.now()+offset;
@@ -16,7 +16,7 @@ const path=s=>ref(db,`rooms/${room}/${s}`);
 const connection=$('#connectionText');
 const toast=text=>window.showToast?window.showToast(text):alert(text);
 const banner=document.createElement('article');banner.className='panel online-entry';
-banner.innerHTML=`<div><span class="panel-kicker">ONLINE ROOM</span><h2>교사 방 생성 / 학생 입장</h2><p id="onlineStatus" role="status">Firebase 연결 준비 중…</p></div><div class="online-controls"><label class="teacher-only-control">게임<select id="onlineKind"><option value="onecard">KDC 원카드</option><option value="quiz">KDC 실시간 퀴즈 (최대 20명)</option></select></label><label class="teacher-only-control">경기 방식<select id="onlineMode"><option value="individual">개인전</option><option value="team">단체전</option></select></label><label class="teacher-only-control">직접 방 코드 (선택)<input id="onlineCreateCode" placeholder="예: KDC-7F3A" maxlength="20" autocomplete="off"></label><button id="onlineCreate" class="primary-button" type="button">교사: 방 만들기</button><label>학생 방 코드<input id="onlineCode" placeholder="방 코드 입력" maxlength="20" autocomplete="off"></label><button id="onlineLeave" class="secondary-button" type="button" hidden>다른 방 접속</button></div><p>교사는 이 화면을 열어두세요. 학생은 별명과 방 코드를 입력하고 아래 입장하기를 누릅니다. 실시간 퀴즈의 문제 유형과 문제 수는 기존 경기 설정에서 고릅니다.</p>`;
+banner.innerHTML=`<div><span class="panel-kicker">ONLINE ROOM</span><h2>교사 방 생성 / 학생 입장</h2><p id="onlineStatus" role="status">Firebase 연결 준비 중…</p></div><div class="online-controls"><label class="teacher-only-control">게임<select id="onlineKind"><option value="onecard">KDC 원카드</option><option value="quiz">KDC 실시간 퀴즈 (최대 20명)</option></select></label><label class="teacher-only-control">경기 방식<select id="onlineMode"><option value="individual">개인전</option><option value="team">단체전</option></select></label><label class="teacher-only-control">직접 방 코드 (선택)<input id="onlineCreateCode" placeholder="예: KDC-7F3A" maxlength="20" autocomplete="off"></label><button id="onlineCreate" class="primary-button" type="button">교사: 방 만들기</button><label>학생 방 코드<input id="onlineCode" placeholder="방 코드 입력" maxlength="20" autocomplete="off"></label><button id="onlineLeave" class="secondary-button" type="button" hidden>다른 방 접속</button></div><p>학생은 방 코드와 별명을 입력해 입장합니다. 교사는 직접 방을 만들고, 대기실에서 이름을 추가·삭제할 수 있습니다. 여러 방을 동시에 관리하려면 이 교사 화면을 열어두세요.</p><p class="auth-note">현재는 Firebase 익명 인증을 사용하며, 이메일·비밀번호 기반의 별도 교사 계정 로그인은 설정되어 있지 않습니다.</p>`;
 $('#onecardLobbyView').prepend(banner);
 const roomManager=document.createElement('section');roomManager.className='panel room-manager';roomManager.innerHTML='<div class="room-manager-heading"><div><span class="panel-kicker">TEACHER ROOM MONITOR</span><h3>진행 중인 방</h3><p>방을 선택하면 해당 게임의 현재 화면으로 이동합니다.</p></div><div class="room-manager-tools"><span id="roomManagerCount">0개 방</span><div class="room-manager-actions"><label>새 방 게임<select id="managerKind"><option value="onecard">KDC 원카드</option><option value="quiz">KDC 실시간 퀴즈</option></select></label><label>경기 방식<select id="managerMode"><option value="individual">개인전</option><option value="team">단체전</option></select></label><label>정원<select id="managerCapacity"></select></label><label>직접 방 코드<input id="managerCreateCode" placeholder="자동 생성 가능" maxlength="20" autocomplete="off"></label><button id="managerCreateRoom" class="primary-button" type="button">+ 새 방 만들기</button></div><button id="deleteCompletedRooms" class="danger-button" type="button">완료된 방 모두 삭제</button></div></div><div class="teacher-room-list" id="teacherRoomList"></div>';$('#onecardScreen').prepend(roomManager);roomManager.hidden=true;
 const quizView=document.createElement('article');quizView.className='panel online-quiz';quizView.hidden=true;$('#onecardScreen').append(quizView);
@@ -28,9 +28,10 @@ $('#ocBackMatch').textContent='대기실로';
 $('#ocBackLobby').textContent='대기실로';
 $('#ocLobbyHint').textContent='방을 만든 뒤 학생들에게 코드를 알려주세요.';
 $('#ocLobbyPlayers').innerHTML='';$('#ocLobbyCount').textContent='0';$('#ocRoomCode').textContent='방 생성 전';
+const teacherRosterTools=document.createElement('div');teacherRosterTools.className='teacher-roster-tools';teacherRosterTools.innerHTML='<label>학생 이름<input id="teacherAddPlayerName" type="text" maxlength="10" placeholder="학생 이름 입력"></label><label id="teacherAddTeamWrap">팀<select id="teacherAddPlayerTeam"><option value="A">A팀</option><option value="B">B팀</option></select></label><button id="teacherAddPlayer" class="secondary-button" type="button">명단에 추가</button><small>추가한 학생은 방 코드와 같은 이름으로 접속하면 이 자리를 사용합니다.</small>';$('#ocLobbyPlayers').after(teacherRosterTools);teacherRosterTools.hidden=true;
 $('#ocStartButton').disabled=true;
 $('.active-player-select').hidden=true;
-$('#roleToggle').title='상단 역할 버튼은 기존 로컬 퀴즈용입니다. 원카드는 방 생성/입장을 사용하세요.';
+$('#roleToggle').title='교사 화면을 열거나 학생으로 방에 입장합니다.';
 const status=text=>{$('#onlineStatus').textContent=text;};
 function fail(e) {
   console.error(e);
@@ -70,6 +71,7 @@ function render() {
   const studentCaptain=pub.kind==='onecard'&&!!me&&me.uid===pub.captainUid;
   const teamA=players.filter(p=>p.team==='A').length,teamB=players.length-teamA;
   const teamsReady=pub.mode!=='team'||(teamA>=2&&teamB>=2&&teamA<=5&&teamB<=5);
+  const pendingCount=players.filter(p=>p.pendingJoin).length;
   $('#ocRoomCode').textContent=room;
   $('#ocLobbyCount').textContent=players.length;$('#ocLobbyLimit').textContent=capacity;
   $('#ocJoinButton').hidden=host||!!me||pub.phase!=='lobby'||players.length>=capacity;
@@ -78,11 +80,12 @@ function render() {
   $('#ocCopyRoom').hidden=!room;
   $('#ocJoinTeam').disabled=pub.mode!=='team';
   $$('.onecard-mode-card').forEach(el=>{el.disabled=!!room;el.classList.toggle('selected',el.dataset.onecardMode===$('#onlineMode').value);});
+  teacherRosterTools.hidden=!(host&&pub.phase==='lobby');$('#teacherAddTeamWrap').hidden=pub.mode!=='team';
   $('#ocStartButton').hidden=!(host||studentCaptain);
-  $('#ocStartButton').disabled=host?(!claimed||players.length<2||!teamsReady):(!connected||pub.phase!=='lobby'||players.length<capacity||!teamsReady);
+  $('#ocStartButton').disabled=host?(!claimed||players.length<2||!teamsReady||pendingCount>0):(!connected||pub.phase!=='lobby'||players.length<capacity||!teamsReady||pendingCount>0);
   $('#ocStartButton').innerHTML=pub.kind==='quiz'?'퀴즈 경기 시작 <span>→</span>':studentCaptain?'방장 시작 <span>→</span>':'원카드 경기 시작 <span>→</span>';
-  $('#ocLobbyHint').textContent=pub.kind==='quiz'?'실시간 퀴즈 · 최대 20명 · 교사가 시작합니다':studentCaptain?players.length>=capacity?(teamsReady?'정원이 찼습니다. 방장인 내가 시작할 수 있어요.':'정원이 찼습니다. A/B팀에 각각 2명 이상 배정해 주세요.'):`학생 방장 · ${capacity-players.length}명 더 입장하면 시작할 수 있어요`:host?pub.mode==='team'?'팀을 직접 나눠 주세요 · 첫 학생이 방장 · 팀당 2~5명':'개인전 · 첫 입장 학생이 방장':pub.mode==='team'?'팀을 직접 선택하세요 · 첫 학생이 방장':'개인전 1:1부터 가능 · 첫 입장 학생이 방장';
-  $('#ocLobbyPlayers').innerHTML=players.map((p,i)=>`<div class="onecard-lobby-player" data-team="${p.team}"><span>${i+1}</span><strong>${escape(p.name)}</strong>${pub.mode==='team'?`<button type="button" class="team-toggle" data-team-uid="${p.uid}" ${p.uid!==uid&&!host?'disabled':''}>${p.team}팀 ↔</button>`:'<small>개인</small>'}${p.uid===pub.captainUid?'<span class="captain-tag">방장</span>':''}${host&&pub.phase==='lobby'?`<button type="button" class="room-player-remove" data-kick-uid="${escape(p.uid)}">삭제</button>`:''}</div>`).join('');
+  $('#ocLobbyHint').textContent=pendingCount?`교사가 추가한 학생 ${pendingCount}명이 방 코드와 같은 이름으로 입장하면 시작할 수 있습니다.`:pub.kind==='quiz'?'실시간 퀴즈 · 최대 20명 · 교사가 시작합니다':studentCaptain?players.length>=capacity?(teamsReady?'정원이 찼습니다. 방장인 내가 시작할 수 있어요.':'정원이 찼습니다. A/B팀에 각각 2명 이상 배정해 주세요.'):`학생 방장 · ${capacity-players.length}명 더 입장하면 시작할 수 있어요`:host?pub.mode==='team'?'팀을 직접 나눠 주세요 · 첫 학생이 방장 · 팀당 2~5명':'개인전 · 첫 입장 학생이 방장':pub.mode==='team'?'팀을 직접 선택하세요 · 첫 학생이 방장':'개인전 1:1부터 가능 · 첫 입장 학생이 방장';
+  $('#ocLobbyPlayers').innerHTML=players.map((p,i)=>`<div class="onecard-lobby-player" data-team="${p.team}"><span>${i+1}</span><strong>${escape(p.name)}</strong>${p.pendingJoin?'<small class="pending-seat-tag">접속 대기</small>':''}${pub.mode==='team'?`<button type="button" class="team-toggle" data-team-uid="${escape(p.uid)}" ${p.uid!==uid&&!host?'disabled':''}>${p.team}팀 ↔</button>`:'<small>개인</small>'}${p.uid===pub.captainUid?'<span class="captain-tag">방장</span>':''}${host&&pub.phase==='lobby'?`<button type="button" class="room-player-remove" data-kick-uid="${escape(p.uid)}">삭제</button>`:''}</div>`).join('');
   $$('[data-team-uid]').forEach(b=>b.onclick=()=>guard(async()=>{
     const p=players.find(p=>p.uid===b.dataset.teamUid);
     if(host) await hostAction(g=>{if(g.phase!=='lobby')throw Error('경기 중에는 변경할 수 없습니다.');const q=g.players.find(q=>q.uid===p.uid);const target=q.team==='A'?'B':'A';if(g.players.filter(q=>q.team===target).length>=(g.kind==='quiz'?10:5))throw Error('팀 인원이 가득 찼습니다.');q.team=target;log(g,`${q.name} ${target}팀으로 변경`,now());});
@@ -97,6 +100,23 @@ function render() {
       apply(g,target.uid,{type:'leave'},now());
     });
   }));
+  $('#teacherAddPlayer').onclick=()=>guard(async()=>{
+    const name=$('#teacherAddPlayerName').value.trim();
+    const team=$('#teacherAddPlayerTeam').value;
+    if(!name||name.length>10)throw Error('학생 이름을 1~10자로 입력하세요.');
+    await hostAction(g=>{
+      if(g.phase!=='lobby')throw Error('대기실에서만 참가자를 추가할 수 있습니다.');
+      if(g.players.length>=g.maxPlayers)throw Error(`방 정원은 ${g.maxPlayers}명입니다.`);
+      const normalizedName=name.normalize('NFC').toLocaleLowerCase('ko-KR');
+      if(g.players.some(p=>String(p.name||'').normalize('NFC').toLocaleLowerCase('ko-KR')===normalizedName))throw Error('같은 이름이 이미 명단에 있습니다. 이름을 구분해 주세요.');
+      if(g.mode==='team'&&g.players.filter(p=>p.team===team).length>=(g.kind==='quiz'?10:5))throw Error(`${team}팀 정원이 가득 찼습니다.`);
+      const reservedUid=`reserved_${crypto.randomUUID()}`;
+      g.players.push({uid:reservedUid,name,team:g.mode==='team'?team:'A',hand:[],score:0,correct:0,pendingJoin:true});
+      if(!g.captainUid)g.captainUid=reservedUid;
+      log(g,`교사가 ${name} 학생의 참가 자리를 추가했습니다.`,now());
+    });
+    $('#teacherAddPlayerName').value='';toast(`${name} 학생 자리를 추가했습니다. 학생은 방 코드와 같은 이름으로 입장하면 됩니다.`);
+  });
   if(pub.phase==='lobby') {view('lobby');status(host?`교사 방장 · ${room} · ${claimed?'게임 진행 준비 완료':'다른 교사 탭이 진행 중입니다'}`:studentCaptain?`학생 방장 ${me.name} · 정원이 차면 직접 시작할 수 있습니다`:`학생 대기실 · ${me?.name||'별명을 입력하고 입장하세요'}`);return;}
   if(pub.kind==='quiz') {renderQuiz();return;}
   const current=players[pub.turn];const ended=pub.phase==='finished';
@@ -460,6 +480,38 @@ async function leaveStudentRoom(sendRequest=true,confirmLeave=true) {
   $('#ocLobbyPlayers').innerHTML='';$('#ocLobbyCount').textContent='0';$('#ocRoomCode').textContent='새 방 코드를 입력하세요';
   $$('.onecard-mode-card').forEach(el=>el.disabled=false);screen();view('lobby');renderRoomManager();status('방에서 나왔습니다. 새 방 코드를 입력해 다른 방에 접속할 수 있습니다.');
 }
+async function enterTeacherMode() {
+  await authInitialization;
+  if(!uid)throw Error('Firebase 연결 준비를 기다려 주세요. 잠시 후 다시 시도하세요.');
+  if(role==='student'&&room) {
+    if(!confirm('현재 참가 중인 방에서 나가고 이 기기를 교사 화면으로 전환할까요?'))return false;
+    await leaveStudentRoom(true,false);
+  }
+  if(role==='student')role='';
+  screen();
+  if(pub)render();else view('lobby');
+  renderRoomManager();
+  status('교사 화면입니다. 온라인 방을 만들거나 진행 중인 방을 선택하세요.');
+  return true;
+}
+async function joinRoomFromModal({code,name}) {
+  await authInitialization;
+  const roomCode=String(code||'').trim().normalize('NFC').toUpperCase();
+  const studentName=String(name||'').trim();
+  if(!roomCodePattern.test(roomCode))throw Error('방 코드를 확인하세요. 한글·영문·숫자와 하이픈·밑줄을 사용해 3~20자로 입력할 수 있습니다.');
+  if(!studentName||studentName.length>10)throw Error('이름을 1~10자로 입력하세요.');
+  if(role==='host'&&room)throw Error('이 기기는 교사 화면에서 방을 관리 중입니다. 학생은 다른 기기나 시크릿 창에서 입장하세요.');
+  if(role==='student'&&room) {
+    if(room===roomCode&&pub?.players?.some(p=>p.uid===uid)){screen();render();return true;}
+    if(!confirm('현재 참가 중인 방에서 나가고 새 방에 입장할까요?'))return false;
+    await leaveStudentRoom(true,false);
+  }
+  await attach(roomCode);
+  if(role==='host')throw Error('이 코드는 현재 교사로 로그인된 방입니다. 학생은 다른 기기에서 입장하세요.');
+  $('#ocJoinTeam').value='A';
+  await send({type:'join',name:studentName,team:'A'});
+  return true;
+}
 function setCapacityOptions(value,preferred=null) {
   const choices=value==='team'?[4,5,6,7,8,9,10]:[2,3,4,5];
   const fallback=value==='team'?10:5;
@@ -501,14 +553,15 @@ $('#ocStopMatch').onclick=()=>guard(()=>hostAction(g=>{
 }));
 $('#ocBackMatch').onclick=()=>view('lobby');$('#ocBackLobby').onclick=()=>view('lobby');
 $('#ocJoinName').onkeydown=e=>{if(e.key==='Enter')$('#ocJoinButton').click();};
-window.kdcOnline={render};
+window.kdcOnline={render,enterTeacherMode,joinRoom:joinRoomFromModal};
 setInterval(()=>{const clock=$('#quizClock');if(clock&&pub?.phase==='quiz')clock.textContent=`남은 시간 ${Math.max(0,Math.ceil((pub.deadline-now())/1000))}초`;},250);
 onValue(ref(db,'.info/serverTimeOffset'),s=>{offset=s.val()||0;});
 onValue(ref(db,'.info/connected'),s=>{connected=!!s.val();connection.textContent=connected?'Firebase 실시간 연결':'인터넷 연결 확인 중';if(pub)render();if(connected)for(const worker of roomWorkers.values())void pumpWorker(worker);});
-try {
+authInitialization=(async()=>{
   await auth.authStateReady();
   const credential=auth.currentUser|| (await signInAnonymously(auth)).user;uid=credential.uid;
   onValue(ref(db,`teachers/${uid}`),s=>syncTeacherRooms(s.val()||{}),fail);
   status('연결 준비 완료. 교사는 방 만들기, 학생은 방 코드와 별명을 입력하세요.');
   if(sessionStorage.kdcRoom)await attach(sessionStorage.kdcRoom);
-}catch(e){fail(e);}
+})();
+authInitialization.catch(fail);

@@ -80,9 +80,16 @@ export function apply(g,uid,a,now=Date.now()) {
   if(a.type==='join') {
     const existing=g.players.find(p=>p.uid===uid);if(existing) return;
     if(g.phase!=='lobby') throw Error('이미 시작된 방입니다.');
-    if(g.players.length >= g.maxPlayers) throw Error('방이 가득 찼어요.');
     const name=String(a.name||'').trim();if(!name||name.length>10) throw Error('별명은 1~10자로 입력하세요.');
     if(!['A','B'].includes(a.team)) throw Error('팀을 선택하세요.');
+    const normalizedName=name.normalize('NFC').toLocaleLowerCase('ko-KR');
+    const reserved=g.players.find(p=>p.pendingJoin&&String(p.name||'').normalize('NFC').toLocaleLowerCase('ko-KR')===normalizedName);
+    if(reserved) {
+      const previousUid=reserved.uid;reserved.uid=uid;reserved.pendingJoin=false;
+      if(g.captainUid===previousUid)g.captainUid=uid;
+      log(g,`${reserved.name} 입장 · 교사 명단의 예약 자리 연결`,now);return;
+    }
+    if(g.players.length >= g.maxPlayers) throw Error('방이 가득 찼어요.');
     if(g.players.filter(p=>p.team===a.team).length>=(g.kind==='quiz'?10:5) && g.mode==='team') throw Error('팀 인원이 가득 찼습니다.');
     g.players.push({uid,name,team:a.team,hand:[],score:0,correct:0});
     if(!g.captainUid)g.captainUid=uid;
@@ -153,6 +160,7 @@ export function apply(g,uid,a,now=Date.now()) {
 export function start(g,deck,now=Date.now()) {
   if(g.phase!=='lobby') throw Error('대기실에서 시작하세요.');
   if(g.players.length<2||g.players.length>g.maxPlayers) throw Error('참가 인원을 확인하세요.');
+  if(g.players.some(p=>p.pendingJoin)) throw Error('교사가 명단에 추가한 학생이 모두 접속한 뒤 시작하세요.');
   if(g.mode==='team') {const a=g.players.filter(p=>p.team==='A').length,b=g.players.length-a;if(a<2||b<2||a>5||b>5) throw Error('각 팀 2~5명이 필요합니다.');}
   g.deck=[...deck];g.players.forEach(p=>{p.hand=g.deck.splice(-6);});
   const first=g.deck.findIndex(c=>c.type==='normal');g.discard=[g.deck.splice(first,1)[0]];g.target=g.discard[0].code;
@@ -167,6 +175,7 @@ export function publicState(g) {
 }
 export function startQuiz(g,questions,now=Date.now()) {
   if(g.phase!=='lobby'||g.players.length<2)throw Error('2명 이상 입장하면 시작할 수 있습니다.');
+  if(g.players.some(p=>p.pendingJoin))throw Error('교사가 명단에 추가한 학생이 모두 접속한 뒤 시작하세요.');
   if(g.mode==='team'&&(!g.players.some(p=>p.team==='A')||!g.players.some(p=>p.team==='B')))throw Error('A팀과 B팀에 참가자가 필요합니다.');
   g.quizQuestions=structuredClone(questions);g.questionIndex=0;g.answers={};g.players.forEach(p=>{p.score=0;p.correct=0;});g.phase='quiz';g.deadline=now+20000;g.winner='';
 }

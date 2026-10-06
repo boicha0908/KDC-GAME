@@ -11,7 +11,6 @@ const categories = [
   { code: "900", name: "역사", hint: "지리 · 여행" },
 ];
 
-const demoNames = ["민서", "도윤", "서윤", "지호", "하린", "유준", "채원", "현우", "수아", "준서", "예린", "건우"];
 const questions = {
   card: [
     { type: "card", prompt: "주제 카드와 가장 알맞은 KDC를 짝지어 보세요.", topic: "조선 시대의 역사", answer: "900", options: ["200", "300", "800", "900"], explanation: "역사·지리·전기는 KDC 900에 모여 있어요." },
@@ -48,8 +47,7 @@ const state = {
   mode: "individual",
   deck: "card",
   rounds: 8,
-  roomCode: "KDC-7F3A",
-  players: demoNames.map((name, index) => ({ name, score: 0, team: (index % 5) + 1 })),
+  players: [],
   currentQuestion: 0,
   currentAnswer: null,
   timer: 20,
@@ -70,6 +68,10 @@ function showToast(message) {
   showToast.timeout = window.setTimeout(() => toast.classList.remove("show"), 2200);
 }
 
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
+}
+
 function setScreen(screen) {
   state.screen = screen;
   $$(".screen").forEach((el) => el.classList.toggle("active", el.id === `${screen}Screen`));
@@ -79,13 +81,25 @@ function setScreen(screen) {
   if (screen === "results") renderResults();
 }
 
+async function openTeacherDashboard() {
+  if (!window.kdcOnline?.enterTeacherMode) return showToast("Firebase 연결을 준비 중입니다. 잠시 후 다시 눌러 주세요.");
+  try {
+    const entered = await window.kdcOnline.enterTeacherMode();
+    if (entered === false) return;
+    $("#studentJoinModal").hidden = true;
+    $("#roleToggle").textContent = "교사";
+    $("#connectionText").textContent = "교사 화면 · Firebase";
+  } catch (error) { showToast(error.message || "교사 화면을 열지 못했습니다."); }
+}
+
 function renderPlayers() {
   const list = $("#playerList");
-  list.innerHTML = state.players.map((player, index) => `<div class="player-chip"><span>${String(index + 1).padStart(2, "0")}</span><strong title="${player.name}">${player.name}</strong></div>`).join("");
+  list.innerHTML = state.players.length ? state.players.map((player, index) => `<div class="player-chip"><span>${String(index + 1).padStart(2, "0")}</span><strong title="${escapeHtml(player.name)}">${escapeHtml(player.name)}</strong><button class="player-chip-remove" data-remove-player="${index}" type="button" aria-label="${escapeHtml(player.name)} 내보내기">×</button></div>`).join("") : '<p class="player-list-empty">아직 참가자가 없습니다. 아래에서 이름을 추가하거나 온라인 학생은 방 코드로 입장하세요.</p>';
   $("#playerCount").textContent = state.players.length;
   $("#readyCount").textContent = state.players.length;
   $("#readyTeamCount").textContent = state.mode === "team" ? `${Math.max(2, Math.min(6, Number($("#teamCount").value)))}팀` : "개인전";
   $("#readyRoundCount").textContent = state.rounds;
+  $("#startButton").disabled = state.players.length < 2;
 }
 
 function renderScoreboard() {
@@ -233,39 +247,43 @@ function setupInteractions() {
   });
   $("#addPlayerButton").addEventListener("click", addPlayer);
   $("#playerNameInput").addEventListener("keydown", (event) => { if (event.key === "Enter") addPlayer(); });
-  $("#copyCodeButton").addEventListener("click", async () => {
-    try { await navigator.clipboard.writeText(state.roomCode); showToast("방 코드를 복사했어요."); } catch { showToast(`방 코드: ${state.roomCode}`); }
+  $("#playerList").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-remove-player]");
+    if (!button) return;
+    const [removed] = state.players.splice(Number(button.dataset.removePlayer), 1);
+    if (!removed) return;
+    renderPlayers();
+    showToast(`${removed.name} 학생을 명단에서 내보냈어요.`);
   });
+  $("#openTeacherRoomsButton").addEventListener("click", openTeacherDashboard);
   $("#helpButton").addEventListener("click", () => { $("#helpModal").hidden = false; });
   $("#closeHelp").addEventListener("click", closeHelp);
   $("#closeHelpButton").addEventListener("click", closeHelp);
   $("#helpModal").addEventListener("click", (event) => { if (event.target.id === "helpModal") closeHelp(); });
-  $("#roleToggle").addEventListener("click", () => {
-    const button = $("#roleToggle");
-    const isTeacher = button.textContent === "교사";
-    if (isTeacher) {
-      $("#studentJoinModal").hidden = false;
-      $("#studentNameInput").focus();
-    } else {
-      button.textContent = "교사";
-      $("#connectionText").textContent = "로컬 시연 모드";
-      showToast("교사 화면으로 돌아왔어요.");
-    }
+  $("#roleToggle").addEventListener("click", openTeacherDashboard);
+  $("#studentEntryToggle").addEventListener("click", () => {
+    $("#studentJoinModal").hidden = false;
+    $("#studentRoomInput").focus();
   });
   $("#closeStudentJoin").addEventListener("click", () => { $("#studentJoinModal").hidden = true; });
   $("#studentJoinModal").addEventListener("click", (event) => { if (event.target.id === "studentJoinModal") $("#studentJoinModal").hidden = true; });
-  $("#studentJoinButton").addEventListener("click", () => {
-    const room = $("#studentRoomInput").value.trim().toUpperCase();
+  $("#studentJoinButton").addEventListener("click", async () => {
+    const room = $("#studentRoomInput").value.trim().normalize("NFC").toUpperCase();
     const name = $("#studentNameInput").value.trim();
-    if (room !== state.roomCode) return showToast("방 코드를 다시 확인해 주세요.");
+    if (!room) return showToast("교사가 알려준 방 코드를 입력해 주세요.");
     if (!name) return showToast("이름을 입력해 주세요.");
-    if (state.players.length >= 20) return showToast("이 방은 이미 20명으로 가득 찼어요.");
-    state.players.push({ name, score: 0, team: (state.players.length % 5) + 1 });
-    renderPlayers();
-    $("#studentJoinModal").hidden = true;
-    $("#roleToggle").textContent = "학생";
-    $("#connectionText").textContent = "학생 화면 미리보기";
-    showToast(`${name} 학생으로 입장했어요.`);
+    if (!window.kdcOnline?.joinRoom) return showToast("Firebase 연결을 준비 중입니다. 잠시 후 다시 눌러 주세요.");
+    const button = $("#studentJoinButton");
+    button.disabled = true;
+    try {
+      const joined = await window.kdcOnline.joinRoom({ code: room, name });
+      if (joined === false) return;
+      $("#studentJoinModal").hidden = true;
+      $("#roleToggle").textContent = "학생";
+      $("#connectionText").textContent = "Firebase 실시간 연결";
+      showToast(`${name} 학생으로 ${room} 방에 입장 요청을 보냈어요.`);
+    } catch (error) { showToast(error.message || "방에 입장하지 못했습니다."); }
+    finally { button.disabled = false; }
   });
   $("#downloadButton").addEventListener("click", () => {
     const rows = [...document.querySelectorAll(".result-row")].map((row) => [...row.children].map((cell) => cell.textContent.trim()).join(","));

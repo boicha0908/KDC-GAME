@@ -22,7 +22,8 @@
       <div class="topbar-actions">
         <span class="connection-pill"><i></i><span id="connectionText">로컬 시연 모드</span></span>
         <button class="ghost-button" id="helpButton" type="button">진행 안내</button>
-        <button class="avatar-button" id="roleToggle" type="button" aria-label="교사와 학생 화면 전환">교사</button>
+        <button class="ghost-button" id="studentEntryToggle" type="button">학생 입장</button>
+        <button class="avatar-button" id="roleToggle" type="button" aria-label="온라인 교사 화면 열기">교사</button>
       </div>
     </header>
 
@@ -60,9 +61,9 @@
               <p>학생들이 방 코드로 입장하면 바로 시작할 수 있어요.</p>
             </div>
             <div class="room-code-card">
-              <span>방 코드</span>
-              <strong id="roomCode">KDC-7F3A</strong>
-              <button id="copyCodeButton" type="button">코드 복사</button>
+              <span>온라인 원카드 방</span>
+              <strong id="roomCode">교사 화면에서 생성</strong>
+              <button id="openTeacherRoomsButton" type="button">방 만들기 / 관리</button>
             </div>
           </div>
 
@@ -130,9 +131,9 @@
                 <div class="panel-heading compact">
                   <div>
                     <span class="panel-kicker">LIVE LOBBY</span>
-                    <h2>참가자 대기실 <span id="playerCount">12</span>/20</h2>
+                    <h2>참가자 대기실 <span id="playerCount">0</span>/20</h2>
                   </div>
-                  <button class="text-button" id="autoFillButton" type="button">20명으로 채우기 <span>↗</span></button>
+                  <button class="text-button" id="autoFillButton" type="button" title="로컬 시연용 학생 이름을 자동으로 추가합니다">테스트 인원 채우기 <span>↗</span></button>
                 </div>
                 <div class="player-list" id="playerList" aria-live="polite"></div>
                 <div class="join-row">
@@ -148,7 +149,7 @@
                 <h2>준비되었나요?</h2>
                 <p>학생들이 모두 입장했다면<br />경기를 시작하세요.</p>
                 <div class="ready-stats">
-                  <div><strong id="readyCount">12</strong><span>참가자</span></div>
+                  <div><strong id="readyCount">0</strong><span>참가자</span></div>
                   <div><strong id="readyTeamCount">1</strong><span>개인전</span></div>
                   <div><strong id="readyRoundCount">8</strong><span>문제</span></div>
                 </div>
@@ -292,7 +293,7 @@
       <h2 id="studentJoinTitle">학생 화면으로 입장</h2>
       <p class="modal-intro">교사가 알려준 방 코드와 이름을 입력하세요.</p>
       <label class="form-label" for="studentRoomInput">방 코드</label>
-      <input class="modal-input" id="studentRoomInput" type="text" value="KDC-7F3A" maxlength="8" aria-label="방 코드" />
+      <input class="modal-input" id="studentRoomInput" type="text" value="" placeholder="예: KDC-7F3A" maxlength="20" autocomplete="off" aria-label="방 코드" />
       <label class="form-label" for="studentNameInput">이름</label>
       <input class="modal-input" id="studentNameInput" type="text" maxlength="10" placeholder="예: 민서" aria-label="학생 이름" />
       <button class="primary-button full" id="studentJoinButton" type="button">입장하기 <span>→</span></button>
